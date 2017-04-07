@@ -1,2 +1,2 @@
-# DOOM-server
+#DOOM-server
 Проект по АКОСу
