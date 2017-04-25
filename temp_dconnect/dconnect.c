@@ -3,7 +3,7 @@
 
 
 
-int d_all_connect(int type, int connections=0) {
+int d_all_connect(int type, int connections) {
 	int sockfd;
 	struct sockaddr_in binder;
 
@@ -44,7 +44,7 @@ int d_all_connect(int type, int connections=0) {
 			close(sockfd);
 			return -1;
 		}
-		if ((int)(D_SERVER_NET_DATA = malloc(sizeof(struct Server_Net_data_t) *
+		if ((D_SERVER_NET_DATA = malloc(sizeof(struct Server_Net_data_t) *
 				connections)) < 0) {
 			perror("Net failure: Malloc\n");
 			close(sockfd);
@@ -111,7 +111,7 @@ int d_all_sendraw(const void* data, size_t data_length,
 
 
 int d_all_recvraw(void* data, size_t data_length,
-		const struct sockaddr_in* address, size_t address_length) {
+		const struct sockaddr_in* address, socklen_t* address_length) {
 	ssize_t recieved_size;
 	int FLAGS = 0;
 	if ((recieved_size = recvfrom(D_NET_DATA.socket,
