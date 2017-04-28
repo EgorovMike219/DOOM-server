@@ -100,10 +100,12 @@ int d_all_sendraw(const void* data, size_t data_length,
 			failed_sends += 1;
 		}
 	}
-	if (failed_sends > (i / 2)) {
-		// perror("SendRaw warning: too many failed sends");
-		return -2;
+	if (failed_sends == repeats) {
+//		perror("SendRaw warning: too many failed sends");
+//		return -2;
+		return -1;
 	}
+
 	return 0;
 }
 
@@ -122,6 +124,54 @@ int d_all_recvraw(void* data, size_t data_length,
 	}
 	else {
 		return recieved_size;
+	}
+}
+
+
+
+
+int d_client_connect(const char* ip) {
+	bzero(&(D_CLIENT_NET_DATA.s_addr), sizeof(D_CLIENT_NET_DATA.s_addr));
+	D_CLIENT_NET_DATA.s_addr.sin_family = AF_INET;
+	D_CLIENT_NET_DATA.s_addr.sin_port = NET_SERVER_PORT;
+	inet_aton(ip, &(D_CLIENT_NET_DATA.s_addr.sin_addr));
+
+	size_t pack_1_len = sizeof(int8_t) * 2 + sizeof(int8_t);
+	int8_t *pack_1 = malloc(pack_1_len);
+	pack_1[0] = 2;
+	pack_1[1] = 1;
+	pack_1[2] = 0;
+
+	size_t pack_R_len = sizeof(int8_t) * 2 + sizeof(int8_t);
+	int8_t *pack_R = malloc(pack_R_len);
+
+	struct sockaddr_in pack_R_addr;
+	socklen_t pack_R_addl;
+
+	d_all_sendraw((void*)pack_1, pack_1_len,
+			&(D_CLIENT_NET_DATA.s_addr), sizeof(D_CLIENT_NET_DATA.s_addr),
+			NET_USUAL_REPEAT);
+
+	while (1) {
+		d_all_recvraw((void*)pack_R, pack_R_len,
+				&pack_R_addr, &pack_R_addl);
+
+		if (pack_R_addl != sizeof(D_CLIENT_NET_DATA.s_addr.sin_addr)) {
+			continue;
+		}
+		if (!memcmp(&pack_R_addr, &(D_CLIENT_NET_DATA.s_addr.sin_addr),
+				pack_R_addl)) {
+			continue;
+		}
+
+		if ((pack_R[0] == 2) && (pack_R[1] == 1)) {
+			if (pack_R[2] > 0) {
+				return 0;
+			}
+			else {
+				return -1;
+			}
+		}
 	}
 }
 

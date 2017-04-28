@@ -7,7 +7,9 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <strings.h>
+#include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
 
@@ -32,7 +34,6 @@ struct All_Net_data_t {
 /// Client connection data
 struct Client_Net_data_t {
 	struct sockaddr_in s_addr;
-	socklen_t s_addr_len;
 } D_CLIENT_NET_DATA;
 
 
@@ -87,7 +88,7 @@ void d_all_disconnect(int type);
  * 	@def: NET_USUAL_REPEAT
  *
  * @return 0 if successful
- * @return -1 or -2 for errors
+ * @return -1 for errors
  */
 int d_all_sendraw(const void* data, size_t data_length,
 		const struct sockaddr_in* address, size_t address_length,
@@ -117,15 +118,14 @@ int d_all_recvraw(void* data, size_t data_length,
 /**
  * CLIENT: Send "hello" datagram to server
  *
- * @param ip: Server ip
- * @param ip_length
+ * @param ip: Server ip (must be a valid C string with \0 ending)
  *
  * @return 0 if successful
  * @return -1 for errors
  *
  * @note Makes D_CLIENT_NET_DATA valid if call successful
  */
-int d_client_connect(const char* ip, size_t ip_length);
+int d_client_connect(const char* ip);
 
 
 /**
