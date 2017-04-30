@@ -6,18 +6,29 @@
 #define DOOM_SERVER_UNITTYPE_H
 
 #include "level.h"
-#include "weaponType.h"
+#include "weapon.h"
 
-enum UnitType
+typedef enum UnitType
 {
     UnitType_None,
     UnitType_Hero,
     UnitType_Enemy,
-};
+} UnitType;
 
 const char* UnitName_None = "None";
 const char* UnitName_Hero = "Hero";
 const char* UnitName_Enemy = "Enemy";
+
+typedef struct UnitData
+{
+    int id;
+    UnitType type;
+    int row;
+    int column;
+    int health;
+    WeaponType weapon;
+    int count_of_charge;
+} UnitData;
 
 
 const char* GetUnitName(UnitType unitType)

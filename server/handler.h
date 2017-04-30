@@ -14,7 +14,7 @@
 #include "consoleColor.h"
 #include "level.h"
 #include "weaponType.h"
-#include "unitType.h"
+#include "unit.h"
 #include "unitData.h"
 
 
@@ -145,7 +145,7 @@ void Render()
     {
         for (int c = 0; c < columnsCount; c++)
         {
-            if (fogOfWar[r][c] == false)
+            if (!fogOfWar[r][c])
             {
                 unsigned char cellSymbol = levelData[r][c];
 

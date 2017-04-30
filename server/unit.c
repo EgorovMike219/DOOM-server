@@ -2,20 +2,9 @@
 // Created by egorov on 30.04.17.
 //
 
-#ifndef DOOM_SERVER_UNITDATA_H
-#define DOOM_SERVER_UNITDATA_H
+#include "unit.h"
+#include "weapon.h"
 
-#include "unitType.h"
-#include "weaponType.h"
-
-typedef struct UnitData
-{
-    UnitType type;
-    int row;
-    int column;
-    int health;
-    WeaponType weapon;
-} UnitData;
 
 void MoveUnitTo(UnitData* pointerToUnitData, int row, int column)
 {
@@ -149,5 +138,3 @@ void MoveUnitTo(UnitData* pointerToUnitData, int row, int column)
         }
     }
 }
-
-#endif //DOOM_SERVER_UNITDATA_H
