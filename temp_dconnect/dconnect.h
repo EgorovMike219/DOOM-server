@@ -14,13 +14,11 @@
 #include <stdlib.h>
 
 
-#define TICK_TYPE size_t
+#define TICK_TYPE uint64_t
 #define ID_TYPE int
 
-#define NET_SERVER_PORT htons(55555)
+#define NET_SERVER_PORT 57575
 #define NET_USUAL_REPEAT 3
-
-
 
 
 
@@ -28,6 +26,7 @@
 /// Session net data
 struct All_Net_data_t {
 	int socket;
+	struct sockaddr_in binder;
 } D_NET_DATA;
 
 
@@ -44,6 +43,11 @@ struct Server_Net_data_t {
 
 } *D_SERVER_NET_DATA;
 
+
+struct Client_Net_packet_t {
+	int8_t type;
+	TICK_TYPE tick;
+};
 
 
 
@@ -129,7 +133,7 @@ int d_client_connect(const char* ip);
 
 
 /**
- * CLIENT: Send datagram to server
+ * CLIENT: Send (any) datagram to server
  *
  * @param data: Data to send
  * @param data_length
@@ -138,6 +142,7 @@ int d_client_connect(const char* ip);
  * @return -1 for errors
  *
  * @warning valid D_CLIENT_NET_DATA required
+ * @warning data must begin with a 'size8_t' protocol code
  */
 int d_client_send(const void* data, size_t data_length);
 
@@ -149,7 +154,7 @@ int d_client_send(const void* data, size_t data_length);
  * @param data_length
  * @param tick: Minimum required tick to get data
  * 				If = 0, ignore time signature (not present in data)
- * 	@def: 0
+ * 				If > 0, ignore all unsual datagrams (safe)
  *
  * @return 0 if successful
  * @return -1 for errors
@@ -170,7 +175,6 @@ int d_client_get(void* data, size_t data_length, TICK_TYPE tick);
  * @param data_length
  * @param tick: Signing tick
  * 				If = 0, ignore time signature
- * 	@def: 0
  *
  * @return 0 if successful
  * @return -1 for errors
