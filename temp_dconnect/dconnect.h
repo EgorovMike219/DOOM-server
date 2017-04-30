@@ -13,42 +13,43 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-
 #define TICK_TYPE uint64_t
 #define ID_TYPE int
 
-#define NET_SERVER_PORT 57575
-#define NET_USUAL_REPEAT 3
+
+
+
+/* Network customization */
+
+#define NET_PORT 57575
+#define NET_REPEAT 3
+
+#define PACK_USUAL 0
+#define PACK_SPECIAL 1
+#define PACK_C 2
+
+/* --------------------- */
 
 
 
 
-/// Session net data
-struct All_Net_data_t {
-	int socket;
-	struct sockaddr_in binder;
-} D_NET_DATA;
-
-
-/// Client connection data
-struct Client_Net_data_t {
-	struct sockaddr_in s_addr;
-} D_CLIENT_NET_DATA;
-
-
-/// Server connection database
-struct Server_Net_data_t {
-	struct sockaddr_in s_addr;
-	socklen_t s_addr_len;
-
-} *D_SERVER_NET_DATA;
-
-
-struct Client_Net_packet_t {
+/// Packet types to make pointers easily
+typedef struct All_Net_packet_usual_t {
 	int8_t type;
 	TICK_TYPE tick;
-};
+	char data[1];
+} PACK_USUAL_HEAD;
 
+typedef struct All_Net_packet_special_t {
+	int8_t type;
+	char data[1];
+} PACK_SPECIAL_HEAD;
+
+typedef struct All_Net_packet_c_t {
+	int8_t type;
+	int8_t query_type;
+	char data[1];
+} PACK_C_HEAD;
 
 
 
@@ -61,14 +62,13 @@ struct Client_Net_packet_t {
  * = 1: client
  * = 2: statistics
  * @param connections: [SERVER-only] Maximum number of connections allowed
- * 	@def: 0
  *
  * @return 0 if successful
  * @return -1 for errors
  *
  * @note Makes D_NET_DATA valid if successful and prepares D_SERVER_NET_DATA
  */
-int d_all_connect(int type, int connections);
+int d_all_connect(int type, size_t connections);
 
 
 /**
@@ -153,8 +153,8 @@ int d_client_send(const void* data, size_t data_length);
  * @param data: Place for data to be put to
  * @param data_length
  * @param tick: Minimum required tick to get data
- * 				If = 0, ignore time signature (not present in data)
- * 				If > 0, ignore all unsual datagrams (safe)
+ * 				If = 0, all datagrams are allowed (including usual)
+ * 				If > 0, all unusual and 'old' datagrams are ignored
  *
  * @return 0 if successful
  * @return -1 for errors
@@ -169,21 +169,18 @@ int d_client_get(void* data, size_t data_length, TICK_TYPE tick);
 
 
 /**
- * SERVER: Send [time-signed] datagram
+ * SERVER: Send datagram
  *
+ * @param id: Valid D_SERVER_NET_DATA id
  * @param data: Data to send
  * @param data_length
- * @param tick: Signing tick
- * 				If = 0, ignore time signature
  *
  * @return 0 if successful
  * @return -1 for errors
  *
  * @warning valid D_SERVER_NET_DATA required
  */
-int d_server_send(ID_TYPE id,
-		const void* data, size_t data_length,
-		TICK_TYPE tick);
+int d_server_send(ID_TYPE id, const void* data, size_t data_length);
 
 
 /**
@@ -192,15 +189,16 @@ int d_server_send(ID_TYPE id,
  * @param data: Place for data to be put to
  * @param data_length
  * @param id_ptr: ID of client sending datagram
+ * @param mode:
+ * 				If = 0, do NOT connect new clients
+ * 				If = 1, ONLY special datagrams are allowed
+ * 				If = 2, do NOT accept usual datagrams (but connect new clients)
  *
- * @return 0 if usual datagram recieved
- * @return 1 if special datagram recieved
- * @return 2 if new client added (and special datagram recieved)
+ * @return 0 if a usual datagram is recieved or a new client is added
+ * @return 1 if a special datagram is recieved
  * @return -1 for errors
- *
- * @note New clients are added automatically
  */
-int d_server_get(void* data, size_t data_length, ID_TYPE* id_ptr);
+int d_server_get(void* data, size_t data_length, ID_TYPE* id_ptr, int mode);
 
 
 /**
@@ -213,7 +211,10 @@ int d_server_get(void* data, size_t data_length, ID_TYPE* id_ptr);
  *
  * @return 0 if successful
  * @return 1 if no such client exists
+ * @return 2 if successful and now is empty
  * @return -1 for errors
+ *
+ * @note a record with last existing id will be put in given 'id' position
  */
 int d_server_manageid(ID_TYPE id, int op);
 
