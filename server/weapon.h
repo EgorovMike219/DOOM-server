@@ -20,10 +20,12 @@ const char* WeaponName_None;
 const char* WeaponName_Fist;
 const char* WeaponName_Bomb;
 
-typedef struct WeaponData {
-    WeaponType type;  // тип оружия
-    int damage;
-    int range_of_charge; // радиус действия заряда
-} WeaponData;
+const char* GetWeaponName(WeaponType weaponType);
+
+int GetWeaponDamage(WeaponType weaponType);
+
+int GetWeaponRangeOfCharge(WeaponType weaponType);
+
+WeaponType GetWeaponTypeFromCell(unsigned char cellSymbol);
 
 #endif //DOOM_SERVER_WEAPONDATA_H

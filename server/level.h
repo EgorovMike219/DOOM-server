@@ -6,19 +6,21 @@
 #define DOOM_SERVER_LEVEL_H
 
 //#include "consoleColor.h"
-
+int reductionHealth;
+int reductionHealthWhileStand;
 int rowsCount;
 int columnsCount;
 int range_of_damage;
 int damage;
-const int heartHeal;
+int heartHeal;
+int poisoningEffect;
 
-const unsigned char CellSymbol_Empty;
-const unsigned char CellSymbol_Wall;
-const unsigned char CellSymbol_Hero;
-const unsigned char CellSymbol_Exit;
-const unsigned char CellSymbol_Heart;
-const unsigned char CellSymbol_Bomb;
+extern const unsigned char CellSymbol_Empty;
+extern const unsigned char CellSymbol_Wall;
+extern const unsigned char CellSymbol_Hero;
+extern const unsigned char CellSymbol_Heart;
+extern const unsigned char CellSymbol_Poison;
+extern const unsigned char CellSymbol_Bomb;
 
 
 char **levelData0;

@@ -5,13 +5,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-const int heartHeal = 150;
 
 const unsigned char CellSymbol_Empty = ' ';
 const unsigned char CellSymbol_Wall = '#';
 const unsigned char CellSymbol_Hero = 'h';
-const unsigned char CellSymbol_Exit = 'e';
 const unsigned char CellSymbol_Heart = '+';
+const unsigned char CellSymbol_Poison = '-';
 const unsigned char CellSymbol_Bomb = '*';
 
 void read_from_file(char* pathname) {
@@ -23,6 +22,22 @@ void read_from_file(char* pathname) {
         printf("can't open file\n");
     }
     char string[20];
+    if (fscanf (file, "%s%s%d", string, string, &reductionHealth) == EOF) {
+        printf("can't read value of reductionHealth\n");
+        exit(1);
+    }
+    if (fscanf (file, "%s%s%d", string, string, &reductionHealthWhileStand) == EOF) {
+        printf("can't read value of reductionHealthWhileStand\n");
+        exit(1);
+    }
+    if (fscanf (file, "%s%s%d", string, string, &heartHeal) == EOF) {
+        printf("can't read value of heartHeal\n");
+        exit(1);
+    }
+    if (fscanf (file, "%s%s%d", string, string, &poisoningEffect) == EOF) {
+        printf("can't read value of poisoningEffect\n");
+        exit(1);
+    }
     if (fscanf (file, "%s%s%d", string, string, &range_of_damage) == EOF) {
         printf("can't read value of range_of_damage\n");
         exit(1);

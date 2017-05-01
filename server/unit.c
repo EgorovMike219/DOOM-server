@@ -2,11 +2,58 @@
 // Created by egorov on 30.04.17.
 //
 
+#include <stdlib.h>
 #include "unit.h"
 #include "weapon.h"
 
+const char* UnitName_None = "None";
+const char* UnitName_Hero = "Hero";
 
-void MoveUnitTo(UnitData* pointerToUnitData, int row, int column)
+const char* GetUnitName(UnitType unitType)
+{
+    switch (unitType)
+    {
+        case UnitType_Hero:
+            return UnitName_Hero;
+    }
+
+    return UnitName_None;
+}
+
+WeaponType GetUnitDefaultWeapon(UnitType unitType)
+{
+    switch (unitType)
+    {
+        case UnitType_Hero:
+            return WeaponType_Bomb;
+    }
+
+    return WeaponType_None;
+}
+
+int GetUnitDefaultHealth(UnitType unitType)
+{
+    switch (unitType)
+    {
+        case UnitType_None:
+            return 0;
+        case UnitType_Hero:
+            return 400;
+    }
+}
+
+UnitType GetUnitTypeFromCell(unsigned char cellSymbol)
+{
+    switch (cellSymbol)
+    {
+        case CellSymbol_Hero:
+            return UnitType_Hero;
+    }
+
+    return UnitType_None;
+}
+
+void MoveUnitTo(UnitData* pointerToUnitData, float newX, float newY)
 {
     // Ignore dead units
     if (pointerToUnitData->health <= 0)
@@ -14,7 +61,12 @@ void MoveUnitTo(UnitData* pointerToUnitData, int row, int column)
         return;
     }
 
-    unsigned char unitSymbol = levelData[pointerToUnitData->row][pointerToUnitData->column];
+    int row = (int)(newY);
+    int column = (int)(newX);
+    int oldRow = (int)(pointerToUnitData->y);
+    int oldColumn = (int)(pointerToUnitData->x);
+
+    unsigned char unitSymbol = levelData[oldRow][oldColumn];
     unsigned char destinationCellSymbol = levelData[row][column];
     bool canMoveToCell = false;
 
@@ -29,45 +81,47 @@ void MoveUnitTo(UnitData* pointerToUnitData, int row, int column)
         }
 
             // Units cells
-        case CellSymbol_Hero:
-        case CellSymbol_Enemy:
-        {
+        case CellSymbol_Hero: {
             UnitType destinationUnitType = GetUnitTypeFromCell(destinationCellSymbol);
 
-            // If destination unit have other type
-            if (pointerToUnitData->type != destinationUnitType)
+            // Find enemy unit struct
+            for (int u = 0; u < unitsCount; u++)
             {
-                // Find enemy unit struct
-                for (int u = 0; u < unitsCount; u++)
+                // Ignore dead units
+                if (unitsData[u].health <= 0)
+                    continue;
+
+                // Ignore yourself
+                if (&unitsData[u] == pointerToUnitData)
+                    continue;
+
+                if (unitsData[u].row == row && unitsData[u].column == column)
                 {
-                    // Ignore dead units
+                    // Calculate weapon damage
+                    int damage = GetWeaponDamage(WeaponName_Fist);
+
+                    // Deal damage
+                    unitsData[u].health -= damage;
+
+                    /*
+                    // Add to status message
+                    sprintf_s(tempBuffer, " %s dealt %i damage to %s.", GetUnitName(pointerToUnitData->type), damage, GetUnitName(destinationUnitType));
+                    strcat_s(statusMessage, tempBuffer);
+                    */
+
+                    // If enemy unit die
                     if (unitsData[u].health <= 0)
-                        continue;
-
-                    if (unitsData[u].row == row && unitsData[u].column == column)
                     {
-                        // Calculate weapon damage
-                        int damage = GetWeaponDamage(pointerToUnitData->weapon);
+                        levelData[row][column] = CellSymbol_Empty;
 
-                        // Deal damage
-                        unitsData[u].health = unitsData[u].health - damage;
-
+                        /*
                         // Add to status message
-                        sprintf_s(tempBuffer, " %s dealt %i damage to %s.", GetUnitName(pointerToUnitData->type), damage, GetUnitName(destinationUnitType));
+                        sprintf_s(tempBuffer, " %s died.", GetUnitName(destinationUnitType), damage, GetUnitName(destinationUnitType));
                         strcat_s(statusMessage, tempBuffer);
-
-                        // If enemy unit die
-                        if (unitsData[u].health <= 0.0f)
-                        {
-                            levelData[row][column] = CellSymbol_Empty;
-
-                            // Add to status message
-                            sprintf_s(tempBuffer, " %s died.", GetUnitName(destinationUnitType), damage, GetUnitName(destinationUnitType));
-                            strcat_s(statusMessage, tempBuffer);
-                        }
-
-                        break;
+                        */
                     }
+
+                    break;
                 }
             }
 
@@ -80,6 +134,7 @@ void MoveUnitTo(UnitData* pointerToUnitData, int row, int column)
     {
         switch (destinationCellSymbol)
         {
+            /*
             // Weapon Cell
             case CellSymbol_Stick:
             case CellSymbol_Club:
@@ -100,21 +155,23 @@ void MoveUnitTo(UnitData* pointerToUnitData, int row, int column)
 
                 break;
             }
+            */
 
-                // Heart
-            case CellSymbol_Heart:
-            {
+            // Heart
+            case CellSymbol_Heart: {
                 canMoveToCell = true;
                 unitsData[heroIndex].health += heartHeal;
                 break;
             }
-
-                // Exit cell
-            case CellSymbol_Exit:
+            // Poison
+            case CellSymbol_Poison:
             {
-                isGameActive = false;
+                canMoveToCell = true;
+                unitsData[heroIndex].health -= poisoningEffect;
                 break;
             }
+
+
         }
     }
 
@@ -129,12 +186,26 @@ void MoveUnitTo(UnitData* pointerToUnitData, int row, int column)
 
         // Set hero symbol to new position
         levelData[pointerToUnitData->row][pointerToUnitData->column] = unitSymbol;
+    }
+}
 
+void SetBomb(UnitData* pointerToUnitData) {
+    pointerToUnitData->count_of_charge -= 1;
+    for (int u = 0; u < unitsCount; u++) {
+        // Ignore dead units
+        if (unitsData[u].health <= 0)
+            continue;
 
-        // Reveal fog of war
-        if (pointerToUnitData->type == UnitType_Hero)
-        {
-            RevealFogOfWar(row, column);
+        // Ignore yourself
+        if (&unitsData[u] == pointerToUnitData)
+            continue;
+
+        if (unitsData[u].row <= pointerToUnitData->row + range_of_damage &&
+            unitsData[u].row >= pointerToUnitData->row - range_of_damage &&
+            unitsData[u].column <= pointerToUnitData->column + range_of_damage &&
+            unitsData[u].row >= pointerToUnitData->row - range_of_damage) {
+            unitsData[u] -= (int)(damage * range_of_damage / (range_of_damage + 1)); // пока без препятствий
         }
     }
+
 }
