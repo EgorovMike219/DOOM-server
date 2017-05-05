@@ -3,55 +3,30 @@
 
 
 
-/* Insides */
-
-#define UDP_MAX_PACKET_SIZE 65536
-
-#define PACK_C_ASK 0
-#define PACK_C_SUCCESS 1
-#define PACK_C_ERROR -1
-
-#define PACK_CT_CLIENTCONNECT 1
-
-/* ------- */
 
 
 
 
+// ========================================================================== //
+// INTERNAL FUNCTIONS, VARIABLES AND CONSTANTS
+// ========================================================================== //
 
-
-
-
-/// Session net data
+// Session net data
 struct All_Net_data_t {
 	int socket;
 	struct sockaddr_in binder;
 } D_NET_DATA;
 
 
-/// Client connection data
+// Client connection data
 struct Client_Net_data_t {
 	struct sockaddr_in s_addr;
 } D_CLIENT_NET_DATA;
 
 
-/// Server connection database
-struct Server_Net_data_t {
-	struct sockaddr_in s_addr;
-
-} *D_SERVER_NET_DATA;
-
-ID_TYPE D_SERVER_NET_DATA_LEN;
-ID_TYPE D_SERVER_NET_DATA_NOW;
 
 
-
-
-
-
-
-
-/* Compare two socket addresses. Return -1, if not equal, otherwise return 0 */
+// Compare two socket addresses. Return -1, if not equal, otherwise return 0
 int compare_sockaddr_in_(const struct sockaddr_in* a, const socklen_t al,
 		const struct sockaddr_in* b, const socklen_t bl) {
 	if (bl != al) {
@@ -65,68 +40,89 @@ int compare_sockaddr_in_(const struct sockaddr_in* a, const socklen_t al,
 
 
 
-int d_all_connect(int type, size_t connections) {
-	int sockfd;
 
-
-	// Essential net connection operations
-	if ((type > 2) || (type < 0)) {
-		fprintf(stderr, "Net failure: Incorrect connection type\n");
+// Transform HR to sockaddr_in
+int transform_from_hr_(const HR_ADDRESS* hr, struct sockaddr_in* sock) {
+	bzero(sock, sizeof(*sock));
+	if (inet_aton(hr ->ip, &(sock ->sin_addr)) < 0) {
 		return -1;
-	}
-
-	if ((sockfd = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
-		fprintf(stderr, "Net failure: Socket creation failed\n");
-		return -1;
-	}
-
-	bzero(&D_NET_DATA.binder, sizeof(D_NET_DATA.binder));
-	D_NET_DATA.binder.sin_family = AF_INET;
-	if (type == 0) {
-		D_NET_DATA.binder.sin_port = htons(NET_PORT);
 	}
 	else {
-		D_NET_DATA.binder.sin_port = htons(0);
+		sock ->sin_family = AF_INET;
+		sock ->sin_port = htons(hr ->port);
+		return 0;
 	}
-	D_NET_DATA.binder.sin_addr.s_addr = htonl(INADDR_ANY);
-
-	D_NET_DATA.socket = sockfd;
-
-	if (bind(sockfd, (struct  sockaddr*) &D_NET_DATA.binder,
-				sizeof(D_NET_DATA.binder)) < 0) {
-		fprintf(stderr, "Net failure: Binding\n");
-		close(sockfd);
-		return -1;
-	}
+}
 
 
-	// Type-specific operations
-	if (type == 0) {
-		if (connections < 0) {
-			fprintf(stderr, "Net failure: Incorrect number of connections\n");
-			close(sockfd);
-			return -1;
-		}
-		if ((D_SERVER_NET_DATA = malloc(sizeof(struct Server_Net_data_t) *
-				connections)) < 0) {
-			fprintf(stderr, "Net failure: Malloc\n");
-			close(sockfd);
-			return -1;
-		}
-		D_SERVER_NET_DATA_LEN = (ID_TYPE)connections;
-		D_SERVER_NET_DATA_NOW = 0;
-	}
+
+
+// Transform sockaddr_in to HR
+int transform_to_hr_(const struct sockaddr_in* sock, HR_ADDRESS* hr) {
+	strcpy(hr ->ip, inet_ntoa(sock ->sin_addr));
+	hr ->port = ntohs(sock ->sin_port);
 	return 0;
 }
 
 
 
 
-void d_all_disconnect(int type) {
-	close(D_NET_DATA.socket);
-	if (type == 0) {
-		free(D_SERVER_NET_DATA);
+
+
+
+
+// ========================================================================== //
+// CUSTOM NETWORK TYPES
+// ========================================================================== //
+
+void* make_UPACK (size_t data_size) {
+	return malloc(sizeof(int16_t) + sizeof(TICK_TYPE) + data_size);
+}
+
+
+
+
+
+
+
+
+// ========================================================================== //
+// COMMON NETWORK FUNCTIONS
+// ========================================================================== //
+
+int d_all_connect(int type) {
+	if ((D_NET_DATA.socket = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
+		fprintf(stderr, "Net failure: Socket creation\n");
+		return -1;
 	}
+
+	bzero(&D_NET_DATA.binder, sizeof(D_NET_DATA.binder));
+	D_NET_DATA.binder.sin_family = AF_INET;
+
+	if (type == 0) {
+		D_NET_DATA.binder.sin_port = htons(NET_PORT);
+	}
+	else {
+		D_NET_DATA.binder.sin_port = htons(0);
+	}
+
+	D_NET_DATA.binder.sin_addr.s_addr = htonl(INADDR_ANY);
+
+	if (bind(D_NET_DATA.socket, (struct  sockaddr*) &D_NET_DATA.binder,
+				sizeof(D_NET_DATA.binder)) < 0) {
+		fprintf(stderr, "Net failure: Binding\n");
+		close(D_NET_DATA.socket);
+		return -1;
+	}
+
+	return 0;
+}
+
+
+
+
+void d_all_disconnect() {
+	close(D_NET_DATA.socket);
 }
 
 
@@ -135,7 +131,6 @@ void d_all_disconnect(int type) {
 int d_all_sendraw(const void* data, size_t data_length,
 		const struct sockaddr_in* address, size_t address_length,
 		size_t repeats) {
-	int FLAGS = 0;
 	size_t i;
 	size_t failed_sends = 0;
 
@@ -156,15 +151,13 @@ int d_all_sendraw(const void* data, size_t data_length,
 	for (i = 0; i < repeats; i++) {
 		if (sendto(D_NET_DATA.socket,
 				data, data_length,
-				FLAGS,
+				0,
 				(struct sockaddr*) address, address_length) < 0) {
 			failed_sends += 1;
 		}
 	}
-	if (failed_sends) {
-//		printf(stderr, "SendRaw warning: too many failed sends");
-//		return -2;
-		return failed_sends;
+	if (failed_sends == repeats) {
+		return -1;
 	}
 
 	return 0;
@@ -176,12 +169,17 @@ int d_all_sendraw(const void* data, size_t data_length,
 int d_all_recvraw(void* data, size_t data_length,
 		const struct sockaddr_in* address, socklen_t* address_length) {
 	ssize_t recieved_size;
-	int FLAGS = 0;
 	if ((recieved_size = recvfrom(D_NET_DATA.socket,
 			data, data_length,
-			FLAGS,
+			MSG_DONTWAIT,
 			(struct sockaddr*) address, address_length)) < 0) {
-		return -1;
+		if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
+			errno = 0;
+			return -2;
+		}
+		else {
+			return -1;
+		}
 	}
 	else {
 		return recieved_size;
@@ -191,33 +189,57 @@ int d_all_recvraw(void* data, size_t data_length,
 
 
 
-int d_client_connect(const char* ip) {
-	// TODO: Use PACK_C_HEAD instead of arrays
 
-	bzero(&(D_CLIENT_NET_DATA.s_addr), sizeof(D_CLIENT_NET_DATA.s_addr));
-	D_CLIENT_NET_DATA.s_addr.sin_family = AF_INET;
-	D_CLIENT_NET_DATA.s_addr.sin_port = htons(NET_PORT);
-	if (inet_aton(ip, &(D_CLIENT_NET_DATA.s_addr.sin_addr)) == 0) {
-		fprintf(stderr, "Connection error: Incorrect server IP address\n");
-		return -1;
-	}
 
-	size_t pack_T_len = sizeof(int8_t) * 2 + sizeof(int8_t);
-	int8_t *pack_T = malloc(pack_T_len);
-	pack_T[0] = PACK_C;
-	pack_T[1] = PACK_CT_CLIENTCONNECT;
-	pack_T[2] = PACK_C_ASK;
 
-	d_all_sendraw(pack_T, pack_T_len,
-			&(D_CLIENT_NET_DATA.s_addr), sizeof(D_CLIENT_NET_DATA.s_addr),
-			NET_REPEAT);
 
+// ========================================================================== //
+// CLIENT NETWORK FUNCTIONS
+// ========================================================================== //
+
+int d_client_connect(HR_ADDRESS server) {
+	const int MAX_RECVRAW_TRYES = 32768;
+	int last_out_code = 0;
+	int recvraw_tryes = 0;
+
+	UPACK_HEAD pack_T;
 	struct sockaddr_in pack_T_addr;
 	socklen_t pack_T_addl;
 
+
+	if (transform_from_hr_(&server, &(D_CLIENT_NET_DATA.s_addr)) < 0) {
+		fprintf(stderr, "Connect failure: Incorrect IP address\n");
+		return -1;
+	}
+
+	pack_T.type = DP_CONNECT;
+	pack_T.stamp = DP_S_ASK;
+
 	while (1) {
-		d_all_recvraw(pack_T, pack_T_len,
-				&pack_T_addr, &pack_T_addl);
+		for (recvraw_tryes = 0; recvraw_tryes < MAX_RECVRAW_TRYES;
+				recvraw_tryes++) {
+			if (d_all_sendraw(&pack_T, sizeof(pack_T),
+					&(D_CLIENT_NET_DATA.s_addr),
+					sizeof(D_CLIENT_NET_DATA.s_addr),
+					NET_REPEAT_ONE) < 0) {
+				fprintf(stderr, "Connect failure: Something has gone wrong\n");
+				return -1;
+			}
+			last_out_code = d_all_recvraw(&pack_T, sizeof(pack_T),
+							&pack_T_addr, &pack_T_addl);
+
+			if (last_out_code == -1) {
+				fprintf(stderr, "Connect failure: Something has gone wrong\n");
+				return -1;
+			}
+			else if (last_out_code >= 0) {
+				break;
+			}
+		}
+		if (last_out_code == -2) {
+			fprintf(stderr, "Connect failure: Server not responding\n");
+			return -1;
+		}
 
 		if (compare_sockaddr_in_(&pack_T_addr, pack_T_addl,
 				&(D_CLIENT_NET_DATA.s_addr),
@@ -225,13 +247,17 @@ int d_client_connect(const char* ip) {
 			continue;
 		}
 
-		if ((pack_T[0] == PACK_C) && (pack_T[1] == PACK_CT_CLIENTCONNECT)) {
-			if (pack_T[2] == PACK_C_SUCCESS) {
-				free(pack_T);
+		// Server tested, correct packet recieved
+		if (pack_T.type == DP_CONNECT) {
+			if (pack_T.stamp == DP_S_SUCCESS) {
 				return 0;
 			}
+			else if (pack_T.stamp == DP_S_ERROR) {
+				fprintf(stderr, "Connect failure: Rejected by server\n");
+				return -1;
+			}
 			else {
-				free(pack_T);
+				fprintf(stderr, "Connect failure: Unknown server error\n");
 				return -1;
 			}
 		}
@@ -241,42 +267,60 @@ int d_client_connect(const char* ip) {
 
 
 
-int d_client_send(const void* data, size_t data_length) {
+int d_client_send(const void* data, size_t data_length, size_t repeats) {
 	return d_all_sendraw(data, data_length,
 			&(D_CLIENT_NET_DATA.s_addr), sizeof(D_CLIENT_NET_DATA.s_addr),
-			NET_REPEAT);
+			repeats);
 }
 
 
 
 
 int d_client_get(void* data, size_t data_length, TICK_TYPE tick) {
-	void* buff = malloc(UDP_MAX_PACKET_SIZE);
-	struct sockaddr_in addr_buff;
-	socklen_t addr_length;
-	size_t recieved_length;
+	const int MAX_RECVRAW_TRYES = 64;
+	int last_out_code = 0;
+	int recvraw_tryes = 0;
+
+	struct sockaddr_in addr_T;
+	socklen_t addl_T;
+
+	UPACK_HEAD* recieved = data;
+
+
+	if (data == NULL) {
+		fprintf(stderr, "Get failure: NULL pointer\n");
+		return -1;
+	}
 
 	while (1) {
-		if ((recieved_length = d_all_recvraw(buff, UDP_MAX_PACKET_SIZE,
-				&addr_buff, &addr_length)) < 0) {
-			return -1;
+		for (recvraw_tryes = 0; recvraw_tryes < MAX_RECVRAW_TRYES;
+				recvraw_tryes++) {
+			last_out_code = d_all_recvraw(data, data_length, &addr_T, &addl_T);
+
+			if (last_out_code == -1) {
+				return -1;
+			}
+			else if (last_out_code == 0) {
+				break;
+			}
 		}
-		if (compare_sockaddr_in_(&addr_buff, addr_length,
+		if (last_out_code == -2) {
+			return -2;
+		}
+
+		if (tick > 0) {
+			if ((recieved ->type != DP_GAME) ||
+					(recieved ->stamp < tick)) {
+				continue;
+			}
+		}
+
+		if (compare_sockaddr_in_(&addr_T, addl_T,
 				&(D_CLIENT_NET_DATA.s_addr),
 				sizeof(D_CLIENT_NET_DATA.s_addr)) != 0) {
 			continue;
 		}
-		if (tick > 0) {
-			PACK_USUAL_HEAD* clip_recieved = buff;
-			if ((clip_recieved ->type != PACK_USUAL) ||
-					(clip_recieved ->tick < tick)) {
-				continue;
-			}
-		}
-		if (recieved_length > data_length) {
-			return -1;
-		}
-		memcpy(data, buff, recieved_length);
+
 		return 0;
 	}
 }
@@ -284,187 +328,71 @@ int d_client_get(void* data, size_t data_length, TICK_TYPE tick) {
 
 
 
-int d_server_send(ID_TYPE id, const void* data, size_t data_length) {
-	if (id >= D_SERVER_NET_DATA_NOW) {
-		fprintf(stderr, "Send error: incorrect ID");
+
+
+
+
+// ========================================================================== //
+// SERVER NETWORK FUNCTIONS
+// ========================================================================== //
+
+int d_server_send(const void* data, size_t data_length,
+		HR_ADDRESS destination, size_t repeats) {
+	struct sockaddr_in temp_sock;
+	if (transform_from_hr_(&destination, &temp_sock) < 0) {
+		fprintf(stderr, "Send failure: Incorrect IP\n");
 		return -1;
 	}
 	return d_all_sendraw(data, data_length,
-			&(D_SERVER_NET_DATA[id].s_addr),
-			sizeof(D_SERVER_NET_DATA[id].s_addr),
-			NET_REPEAT);
+			&temp_sock,
+			sizeof(temp_sock),
+			repeats);
 }
 
 
 
 
-int d_server_get(void* data, size_t data_length, ID_TYPE* id_ptr, int mode) {
-	size_t buff_len = UDP_MAX_PACKET_SIZE;
-	void* buff = malloc(buff_len);
-	int buff_recieved;
-	struct sockaddr_in addr;
-	socklen_t addr_len;
-	int id_found;
+int d_server_get(int mode, void* data, size_t data_length,
+		HR_ADDRESS* departure) {
+	int last_out_code = 0;
 
+	struct sockaddr_in cli_addr;
+	socklen_t cli_addl;
 
-	int return_value;
-	ID_TYPE return_id;
-
-	ID_TYPE i;
+	UPACK_HEAD* recieved = data;
 
 	while (1) {
-		if ((buff_recieved =  d_all_recvraw(buff, buff_len, &addr, &addr_len))
-				< 0) {
-			return -1;
+		last_out_code = d_all_recvraw(data, data_length,
+				&cli_addr, &cli_addl);
+		if (last_out_code < 0) {
+			return last_out_code;
 		}
-		else if (buff_recieved > data_length) {
+
+		if (recieved ->type == DP_GAME) {
+			// A server cannot get GAME datagrams, it only sends them
 			continue;
 		}
 
 		if (mode == 0) {
-			PACK_USUAL_HEAD* head = buff;
-			if (head ->type == PACK_USUAL) {
-				return_value = 0;
-			}
-			else if (head ->type == PACK_SPECIAL) {
-				return_value = 1;
-			}
-			else if (head ->type == PACK_C) {
-				// TODO: May be changed to check some additional parameters
-				continue;
-			}
-			else {
-				return -1;
-			}
-
-			id_found = 0;
-			for (i = 0; i < D_SERVER_NET_DATA_NOW; i++) {
-				if (memcmp(&(D_SERVER_NET_DATA[i]), &addr, addr_len) == 0) {
-					return_id = i;
-					id_found = 1;
-					break;
-				}
-			}
-			if (id_found == 1) {
-				break;
-			}
-			else {
-				continue;
-			}
+			break;
 		}
 		else if (mode == 1) {
-			PACK_SPECIAL_HEAD* head = buff;
-			if (head ->type == PACK_USUAL) {
-				continue;
-			}
-			else if (head ->type == PACK_SPECIAL) {
-				return_value = 1;
-			}
-			else if (head ->type == PACK_C) {
+			if (recieved ->type == DP_CLIENT_ACTION) {
 				continue;
 			}
 			else {
-				return -1;
-			}
-
-			id_found = 0;
-			for (i = 0; i < D_SERVER_NET_DATA_NOW; i++) {
-				if (memcmp(&(D_SERVER_NET_DATA[i]), &addr, addr_len) == 0) {
-					return_id = i;
-					id_found = 1;
-					break;
-				}
-			}
-			if (id_found == 1) {
 				break;
 			}
-			else {
-				continue;
-			}
-		}
-		else if (mode == 2) {
-			PACK_C_HEAD* head = buff;
-			if (head ->type == PACK_USUAL) {
-				continue;
-			}
-			else if (head ->type == PACK_SPECIAL) {
-				return_value = 1;
-			}
-			else if (head ->type == PACK_C) {
-				return_value = 0;
-			}
-			else {
-				return -1;
-			}
-
-			id_found = 0;
-			for (i = 0; i < D_SERVER_NET_DATA_NOW; i++) {
-				if (memcmp(&(D_SERVER_NET_DATA[i]), &addr, addr_len) == 0) {
-					return_id = i;
-					id_found = 1;
-					break;
-				}
-			}
-			if (return_value == 1) {
-				if (id_found == 1) {
-					break;
-				}
-				else {
-					continue;
-				}
-			}
-			else {
-				if (id_found == 1) {
-					continue;
-				}
-				// Add new client
-				if (D_SERVER_NET_DATA_NOW == D_SERVER_NET_DATA_LEN) {
-					// TODO: Send busy package
-					continue;
-				}
-				D_SERVER_NET_DATA[D_SERVER_NET_DATA_NOW].s_addr = addr;
-				D_SERVER_NET_DATA_NOW += 1;
-			}
 		}
 	}
 
-	memcpy(data, buff, buff_recieved);
-	*id_ptr = return_id;
-	return return_value;
-}
-
-
-
-
-int d_server_manageid(int op, ID_TYPE id) {
-	if (id >= D_SERVER_NET_DATA_NOW) {
-		return 1;
+	if (transform_to_hr_(&cli_addr, departure) < 0) {
+		return -1;
 	}
-
-	if (op == 0) {
+	else {
 		return 0;
 	}
-	else if (op == -1) {
-		if (D_SERVER_NET_DATA_NOW == 0) {
-			return -1;
-		}
-
-		if (D_SERVER_NET_DATA_NOW > 1) {
-			D_SERVER_NET_DATA[id] = D_SERVER_NET_DATA[D_SERVER_NET_DATA_NOW];
-			D_SERVER_NET_DATA_NOW -= 1;
-			return 0;
-		}
-		else {
-			D_SERVER_NET_DATA_NOW -= 1;
-			return 2;
-		}
-
-	}
-
-	return 0;
 }
-
-
 
 
 

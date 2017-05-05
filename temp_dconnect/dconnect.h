@@ -13,74 +13,120 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+// TODO: Remove from this file (not only network-related)
 #define TICK_TYPE uint64_t
-#define ID_TYPE int
 
 
 
 
-/* Network customization */
-
-#define NET_PORT 57575
-#define NET_REPEAT 3
-
-#define PACK_USUAL 0
-#define PACK_SPECIAL 1
-#define PACK_C 2
-
-/* --------------------- */
 
 
 
 
-/// Packet types to make pointers easily
-typedef struct All_Net_packet_usual_t {
-	int8_t type;
-	TICK_TYPE tick;
+// ========================================================================== //
+// NETWORK CUSTOMIZATION
+// ========================================================================== //
+
+#define UDP_MAX_PACKET_SIZE 65536
+
+#define NET_PORT 59200
+
+#define NET_REPEAT_ONE 1
+#define NET_REPEAT_CLIENT 8
+#define NET_REPEAT_SERVER 48
+
+
+
+
+
+
+
+
+// ========================================================================== //
+// CUSTOM NETWORK TYPES
+// ========================================================================== //
+
+/*
+ * Human-readable client address
+ *
+ * @note 'port' is stored in local byte order
+ */
+typedef struct All_Net_clientaddr_t {
+	char ip[16];
+	in_port_t port;
+} HR_ADDRESS;
+
+
+/*
+ * Universal packet header
+ *
+ * @var type: packet type and operation it performs. Use predefined constants!
+ * @var stamp: meta-information about this packet
+ * @var data
+ */
+typedef struct All_Net_packheader_t {
+	int16_t type;
+	TICK_TYPE stamp;
 	char data[1];
-} PACK_USUAL_HEAD;
-
-typedef struct All_Net_packet_special_t {
-	int8_t type;
-	char data[1];
-} PACK_SPECIAL_HEAD;
-
-typedef struct All_Net_packet_c_t {
-	int8_t type;
-	int8_t query_type;
-	char data[1];
-} PACK_C_HEAD;
+} UPACK_HEAD;
 
 
+/*
+ * Create UPACK_HEAD using malloc, where data will be data[data_size]
+ *
+ * @param data_size
+ *
+ * @return pointer to UPACK_HEAD structure
+ */
+void* make_UPACK(size_t data_size);
 
 
-/**
- * Creates an UDP socket and binds it.
+// For UPACK_HEAD.type use only these predefined constants //
+#define DP_GAME 0
+#define DP_INFO 1
+#define DP_CONNECT 2
+#define DP_CLIENT_ACTION -1
+
+
+// Use this predefined constants for UPACK_HEAD.tick in special packets //
+#define DP_S_SUCCESS 0
+#define DP_S_ASK 1
+#define DP_S_ERROR 2
+
+
+
+
+
+
+
+
+// ========================================================================== //
+// COMMON NETWORK FUNCTIONS
+// ========================================================================== //
+
+/*
+ * Create an UDP socket and bind it.
  *
  * @param type: Type of connection required
- * = 0: server
- * = 1: client
- * = 2: statistics
- * @param connections: [SERVER-only] Maximum number of connections allowed
+ * 				= 0: server
+ * 				= 1: client
+ * 				= 2: statistics
  *
  * @return 0 if successful
  * @return -1 for errors
  *
- * @note Makes D_NET_DATA valid if successful and prepares D_SERVER_NET_DATA
+ * @note Execute this before using any other dconnect.h functions
  */
-int d_all_connect(int type, size_t connections);
+int d_all_connect(int type);
 
 
-/**
- * @param type: Type of connection to be closed
- * = 0: server
- * = 1: client
- * = 2: statistics
+/*
+ * Safely close a connection. Can be reopened using d_all_connect
  */
-void d_all_disconnect(int type);
+void d_all_disconnect();
 
 
-/**
+/*
  * Send raw data using UDP protocol
  * Wrapper for <socket.h>::sendto()
  *
@@ -89,7 +135,6 @@ void d_all_disconnect(int type);
  * @param address
  * @param address_length: 'sizeof(address)'
  * @param repeats: Send UDP packet this number of times
- * 	@def: NET_USUAL_REPEAT
  *
  * @return 0 if successful
  * @return -1 for errors
@@ -99,7 +144,7 @@ int d_all_sendraw(const void* data, size_t data_length,
 		size_t repeats);
 
 
-/**
+/*
  * Recieve raw data using UDP protocol
  * Wrapper for <socket.h>::recvfrom()
  *
@@ -110,6 +155,9 @@ int d_all_sendraw(const void* data, size_t data_length,
  *
  * @return sizeof(data) actually recieved
  * @return -1 for errors
+ * @return -2 if no data can be recieved at the moment
+ *
+ * @note function call never freezes; returns -2 if no data available
  */
 int d_all_recvraw(void* data, size_t data_length,
 		const struct sockaddr_in* address, socklen_t* address_length);
@@ -119,21 +167,27 @@ int d_all_recvraw(void* data, size_t data_length,
 
 
 
-/**
+
+
+// ========================================================================== //
+// CLIENT NETWORK FUNCTIONS
+// ========================================================================== //
+
+/*
  * CLIENT: Send "hello" datagram to server
  *
- * @param ip: Server ip (must be a valid C string with \0 ending)
+ * @param server: Info of server to be connected to
  *
  * @return 0 if successful
  * @return -1 for errors
  *
- * @note Makes D_CLIENT_NET_DATA valid if call successful
+ * @note Execute this before using any other _client functions
  */
-int d_client_connect(const char* ip);
+int d_client_connect(HR_ADDRESS server);
 
 
-/**
- * CLIENT: Send (any) datagram to server
+/*
+ * CLIENT: Send datagram to server
  *
  * @param data: Data to send
  * @param data_length
@@ -141,25 +195,22 @@ int d_client_connect(const char* ip);
  * @return 0 if successful
  * @return -1 for errors
  *
- * @warning valid D_CLIENT_NET_DATA required
- * @warning data must begin with a 'size8_t' protocol code
+ * @warning data must fit UPACK_HEAD
  */
-int d_client_send(const void* data, size_t data_length);
+int d_client_send(const void* data, size_t data_length, size_t repeats);
 
 
-/**
+/*
  * CLIENT: Recieve [time-signed] datagram
  *
  * @param data: Place for data to be put to
  * @param data_length
  * @param tick: Minimum required tick to get data
- * 				If = 0, all datagrams are allowed (including usual)
- * 				If > 0, all unusual and 'old' datagrams are ignored
+ * 				= 0, all datagrams are allowed (including usual)
+ * 				> 0, all unusual and 'old' datagrams are ignored
  *
  * @return 0 if successful
  * @return -1 for errors
- *
- * @warning valid D_CLIENT_NET_DATA required
  */
 int d_client_get(void* data, size_t data_length, TICK_TYPE tick);
 
@@ -168,55 +219,52 @@ int d_client_get(void* data, size_t data_length, TICK_TYPE tick);
 
 
 
-/**
- * SERVER: Send datagram
+
+
+// ========================================================================== //
+// SERVER NETWORK FUNCTIONS
+// ========================================================================== //
+
+/*
+ * SERVER: Send a datagram
  *
- * @param id: Valid D_SERVER_NET_DATA id
  * @param data: Data to send
  * @param data_length
+ * @param destination: Adressee info
  *
  * @return 0 if successful
  * @return -1 for errors
- *
- * @warning valid D_SERVER_NET_DATA required
  */
-int d_server_send(ID_TYPE id, const void* data, size_t data_length);
+int d_server_send(const void* data, size_t data_length,
+		HR_ADDRESS destination, size_t repeats);
 
 
-/**
- * SERVER: Recieve datagram from client
+/*
+ * SERVER: Recieve a datagram
+ *
+ * @param mode:
+ * 				= 0, accept and save all datagrams
+ * 				= 1, ignore CLIENT_ACTION datagrams
+ * 				.. to be continued ..
  *
  * @param data: Place for data to be put to
  * @param data_length
- * @param id_ptr: ID of client sending datagram
- * @param mode:
- * 				If = 0, do NOT connect new clients
- * 				If = 1, ONLY special datagrams are allowed
- * 				If = 2, do NOT accept usual datagrams (but connect new clients)
+ * @param departure: Place for adresser info to be put to. May be NULL
  *
- * @return 0 if a usual datagram is recieved or a new client is added
- * @return 1 if a special datagram is recieved
+ * @return 0 if datagram recieved correctly
  * @return -1 for errors
+ * @return -2 if no packets available at the moment
+ *
+ * @note it is recommended to have data as big as possible: UDP_MAX_PACKET_SIZE
+ * and cut it afterwards; otherwise some packets may be partially lost
+ *
+ * @note all GAME datagrams will be lost, as a server must not get them normally
  */
-int d_server_get(void* data, size_t data_length, ID_TYPE* id_ptr, int mode);
+int d_server_get(int mode, void* data, size_t data_length,
+		HR_ADDRESS* departure);
 
 
-/**
- * SERVER: Manage preferences for selected client id
- *
- * @param id: Client id
- * @param op: Operation to be performed
- * 		0: Test existence & exit
- * 		-1: Remove client
- *
- * @return 0 if successful
- * @return 1 if no such client exists
- * @return 2 if successful and now is empty
- * @return -1 for errors
- *
- * @note a record with last existing id will be put in given 'id' position
- */
-int d_server_manageid(ID_TYPE id, int op);
+
 
 
 
