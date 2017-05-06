@@ -197,7 +197,7 @@ int d_all_recvraw(void* data, size_t data_length,
 // CLIENT NETWORK FUNCTIONS
 // ========================================================================== //
 
-int d_client_connect(HR_ADDRESS server) {
+int d_client_connect(HR_ADDRESS server, int reconnect) {
 	const int MAX_RECVRAW_TRYES = 32768;
 	int last_out_code = 0;
 	int recvraw_tryes = 0;
@@ -207,12 +207,23 @@ int d_client_connect(HR_ADDRESS server) {
 	socklen_t pack_T_addl;
 
 
-	if (transform_from_hr_(&server, &(D_CLIENT_NET_DATA.s_addr)) < 0) {
+	if ((reconnect != 1) && (reconnect != 2)) {
+		reconnect = 0;
+	}
+
+	if ((reconnect <= 1) &&
+			(transform_from_hr_(&server, &(D_CLIENT_NET_DATA.s_addr)) < 0)) {
 		fprintf(stderr, "Connect failure: Incorrect IP address\n");
 		return -1;
 	}
 
-	pack_T.type = DP_CONNECT;
+
+	if (reconnect == 0) {
+		pack_T.type = DP_CONNECT;
+	}
+	else {
+		pack_T.type = DP_RECONNECT;
+	}
 	pack_T.stamp = DP_S_ASK;
 
 	while (1) {
@@ -248,7 +259,8 @@ int d_client_connect(HR_ADDRESS server) {
 		}
 
 		// Server tested, correct packet recieved
-		if (pack_T.type == DP_CONNECT) {
+		if (((pack_T.type == DP_CONNECT) && (reconnect == 0)) ||
+				((pack_T.type == DP_RECONNECT) && (reconnect > 0))) {
 			if (pack_T.stamp == DP_S_SUCCESS) {
 				return 0;
 			}
@@ -257,7 +269,7 @@ int d_client_connect(HR_ADDRESS server) {
 				return -1;
 			}
 			else {
-				fprintf(stderr, "Connect failure: Unknown server error\n");
+				fprintf(stderr, "Connect failure: Unusual server response\n");
 				return -1;
 			}
 		}

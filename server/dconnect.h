@@ -13,27 +13,10 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+#include "dconnect_settings.h"
+
 // TODO: Remove from this file (not only network-related)
 #define TICK_TYPE uint64_t
-
-
-
-
-
-
-
-
-// ========================================================================== //
-// NETWORK CUSTOMIZATION
-// ========================================================================== //
-
-#define UDP_MAX_PACKET_SIZE 65536
-
-#define NET_PORT 59200
-
-#define NET_REPEAT_ONE 1
-#define NET_REPEAT_CLIENT 8
-#define NET_REPEAT_SERVER 48
 
 
 
@@ -81,19 +64,6 @@ typedef struct All_Net_packheader_t {
 void* make_UPACK(size_t data_size);
 
 
-// For UPACK_HEAD.type use only these predefined constants //
-#define DP_GAME 0
-#define DP_INFO 1
-#define DP_CONNECT 2
-#define DP_CLIENT_ACTION -1
-
-
-// Use this predefined constants for UPACK_HEAD.tick in special packets //
-#define DP_S_SUCCESS 0
-#define DP_S_ASK 1
-#define DP_S_ERROR 2
-
-
 
 
 
@@ -111,6 +81,10 @@ void* make_UPACK(size_t data_size);
  * 				= 0: server
  * 				= 1: client
  * 				= 2: statistics
+ * @param reconnect: Is reconnect procedure required
+ * 				= 1: Reconnect, use given IP adress
+ * 				= 2: Reconnect using valid D_CLIENT_NET_DATA
+ * 				Oth: Do not reconnect
  *
  * @return 0 if successful
  * @return -1 for errors
@@ -183,7 +157,7 @@ int d_all_recvraw(void* data, size_t data_length,
  *
  * @note Execute this before using any other _client functions
  */
-int d_client_connect(HR_ADDRESS server);
+int d_client_connect(HR_ADDRESS server, int reconnect);
 
 
 /*
