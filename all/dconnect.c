@@ -321,8 +321,7 @@ int d_client_get(void* data, size_t data_length, TICK_TYPE tick) {
 		}
 
 		if (tick > 0) {
-			if ((recieved ->type != DP_GAME) ||
-					(recieved ->stamp < tick)) {
+			if (recieved ->stamp < tick) {
 				continue;
 			}
 		}
