@@ -29,22 +29,18 @@ const int maxUnitsCount = 35;
 bool isGameActive = true;
 
 char levelData[rowsCount][columnsCount];
-bool fogOfWar[rowsCount][columnsCount];
+
 
 UnitData unitsData[maxUnitsCount];
 int unitsCount = 0;
-int heroIndex = 0;
 
 char tempBuffer[128];
-char statusMessage[200];
 
 
 /////////////////////////////////////
 // Functions
 void SetupSystem()
 {
-    statusMessage[0] = 0;
-
     srand(time(0));
 
     consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -56,17 +52,6 @@ void SetupSystem()
     SetConsoleCursorInfo(consoleHandle, &cursorInfo);
 }
 
-void RevealFogOfWar(int row, int column)
-{
-    for (int r = row - 1; r <= row + 1; r++)
-    {
-        for (int c = column - 1; c <= column + 1; c++)
-        {
-            fogOfWar[r][c] = false;  //���� false
-        }
-    }
-}
-
 void Initialize()
 {
     unitsCount = 0;
@@ -76,21 +61,15 @@ void Initialize()
     {
         for (int c = 0; c < columnsCount; c++)
         {
-            fogOfWar[r][c] = false;  //���� true
-
-
             unsigned char cellSymbol = levelData0[r][c];
 
             levelData[r][c] = cellSymbol;
 
             switch (cellSymbol)
             {
-                case CellSymbol_Hero:
+                case CellSymbol_Hero: {
                     heroIndex = unitsCount;
 
-                case CellSymbol_Orc:
-                case CellSymbol_Skeleton:
-                {
                     UnitType unitType = GetUnitTypeFromCell(cellSymbol);
                     unitsData[unitsCount].type = unitType;
                     unitsData[unitsCount].row = r;
@@ -104,9 +83,6 @@ void Initialize()
             }
         }
     }
-
-    // Reveal fog of war
-    RevealFogOfWar(unitsData[heroIndex].row, unitsData[heroIndex].column);
 }
 
 void Render()

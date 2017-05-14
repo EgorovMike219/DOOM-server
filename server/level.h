@@ -14,6 +14,8 @@ int range_of_damage;
 int damage;
 int heartHeal;
 int poisoningEffect;
+extern const float cellEndValue;
+extern const float cellBeginValue;
 
 extern const unsigned char CellSymbol_Empty;
 extern const unsigned char CellSymbol_Wall;

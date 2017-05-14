@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+const float cellEndValue = 0.999f;
+const float cellBeginValue = 0.001f;
 
 const unsigned char CellSymbol_Empty = ' ';
 const unsigned char CellSymbol_Wall = '#';

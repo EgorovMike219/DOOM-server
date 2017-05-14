@@ -31,8 +31,17 @@ WeaponType GetUnitDefaultWeapon(UnitType unitType)
     return WeaponType_None;
 }
 
-int GetUnitDefaultHealth(UnitType unitType)
-{
+int GetUnitSpeed(UnitType unitType) {
+    switch (unitType)
+    {
+        case UnitType_None:
+            return 0.0f;
+        case UnitType_Hero:
+            return 4.0f;
+    }
+}
+
+int GetUnitDefaultHealth(UnitType unitType) {
     switch (unitType)
     {
         case UnitType_None:
@@ -53,7 +62,7 @@ UnitType GetUnitTypeFromCell(unsigned char cellSymbol)
     return UnitType_None;
 }
 
-void MoveUnitTo(UnitData* pointerToUnitData, float newX, float newY)
+bool MoveUnitTo(UnitData* pointerToUnitData, float newX, float newY)
 {
     // Ignore dead units
     if (pointerToUnitData->health <= 0)
@@ -95,7 +104,7 @@ void MoveUnitTo(UnitData* pointerToUnitData, float newX, float newY)
                 if (&unitsData[u] == pointerToUnitData)
                     continue;
 
-                if (unitsData[u].row == row && unitsData[u].column == column)
+                if ((int)(unitsData[u].y) == row && (int)(unitsData[u].x) == column)
                 {
                     // Calculate weapon damage
                     int damage = GetWeaponDamage(WeaponName_Fist);
@@ -103,22 +112,10 @@ void MoveUnitTo(UnitData* pointerToUnitData, float newX, float newY)
                     // Deal damage
                     unitsData[u].health -= damage;
 
-                    /*
-                    // Add to status message
-                    sprintf_s(tempBuffer, " %s dealt %i damage to %s.", GetUnitName(pointerToUnitData->type), damage, GetUnitName(destinationUnitType));
-                    strcat_s(statusMessage, tempBuffer);
-                    */
-
                     // If enemy unit die
                     if (unitsData[u].health <= 0)
                     {
                         levelData[row][column] = CellSymbol_Empty;
-
-                        /*
-                        // Add to status message
-                        sprintf_s(tempBuffer, " %s died.", GetUnitName(destinationUnitType), damage, GetUnitName(destinationUnitType));
-                        strcat_s(statusMessage, tempBuffer);
-                        */
                     }
 
                     break;
@@ -134,28 +131,6 @@ void MoveUnitTo(UnitData* pointerToUnitData, float newX, float newY)
     {
         switch (destinationCellSymbol)
         {
-            /*
-            // Weapon Cell
-            case CellSymbol_Stick:
-            case CellSymbol_Club:
-            case CellSymbol_Spear:
-            case CellSymbol_Saber:
-            {
-                canMoveToCell = true;
-
-                WeaponType weaponType = GetWeaponTypeFromCell(destinationCellSymbol);
-                if (unitsData[heroIndex].weapon < weaponType)
-                {
-                    unitsData[heroIndex].weapon = weaponType;
-                }
-
-                // Add to status message
-                sprintf_s(tempBuffer, " %s found %s.", GetUnitName(pointerToUnitData->type), GetWeaponName(weaponType));
-                strcat_s(statusMessage, tempBuffer);
-
-                break;
-            }
-            */
 
             // Heart
             case CellSymbol_Heart: {
@@ -170,23 +145,23 @@ void MoveUnitTo(UnitData* pointerToUnitData, float newX, float newY)
                 unitsData[heroIndex].health -= poisoningEffect;
                 break;
             }
-
-
         }
     }
 
     if (canMoveToCell)
     {
         // Remove unit symbol from previous position
-        levelData[pointerToUnitData->row][pointerToUnitData->column] = CellSymbol_Empty;
+        levelData[oldRow][oldColumn] = CellSymbol_Empty;
 
         // Set new hero position
-        pointerToUnitData->row = row;
-        pointerToUnitData->column = column;
+        pointerToUnitData->x = newX;
+        pointerToUnitData->y = newY;
 
         // Set hero symbol to new position
-        levelData[pointerToUnitData->row][pointerToUnitData->column] = unitSymbol;
+        levelData[row][column] = unitSymbol;
     }
+
+    return canMoveToCell;
 }
 
 void SetBomb(UnitData* pointerToUnitData) {
@@ -200,12 +175,108 @@ void SetBomb(UnitData* pointerToUnitData) {
         if (&unitsData[u] == pointerToUnitData)
             continue;
 
-        if (unitsData[u].row <= pointerToUnitData->row + range_of_damage &&
-            unitsData[u].row >= pointerToUnitData->row - range_of_damage &&
-            unitsData[u].column <= pointerToUnitData->column + range_of_damage &&
-            unitsData[u].row >= pointerToUnitData->row - range_of_damage) {
+        int row = (int)(pointerToUnitData->y);
+        int column = (int)(pointerToUnitData->x);
+        if ((int)(unitsData[u].y) <= row + range_of_damage &&
+                (int)(unitsData[u].y) >= row - range_of_damage &&
+                (int)(unitsData[u].x) <= column + range_of_damage &&
+                (int)(unitsData[u].x) >= column - range_of_damage) {
             unitsData[u] -= (int)(damage * range_of_damage / (range_of_damage + 1)); // пока без препятствий
         }
     }
 
+}
+
+void UpdateUnit( UnitData* pointerToUnitData, float deltaTime )
+{
+    // Unit row and column
+    int row = (int)(pointerToUnitData->y);
+    int column = (int_(pointerToUnitData->x);
+
+
+    // X Order
+    if (pointerToUnitData->order_x == UnitOrder_Backward) {
+        pointerToUnitData->speed_x = -GetUnitSpeed(pointerToUnitData->type);
+    }
+    else {
+        if (pointerToUnitData->order_x == UnitOrder_Forward) {
+            pointerToUnitData->speed_x = GetUnitSpeed(pointerToUnitData->type);
+        }
+        else {
+            pointerToUnitData->speed_x = 0;
+        }
+    }
+
+    // Y Order
+    if (pointerToUnitData->order_y == UnitOrder_Backward) {
+        pointerToUnitData->speed_y = -GetUnitSpeed(pointerToUnitData->type);
+    }
+    else {
+        if (pointerToUnitData->order_y == UnitOrder_Forward) {
+            pointerToUnitData->speed_y = GetUnitSpeed(pointerToUnitData->type);
+        }
+        else {
+            pointerToUnitData->speed_y = 0;
+        }
+    }
+
+
+    // New position
+    float deltaY = pointerToUnitData->speed_y * deltaTime;
+    float deltaX = pointerToUnitData->speed_x * deltaTime;
+    float newY = pointerToUnitData->y + deltaY;
+    float newX =  pointerToUnitData->x + deltaX;
+    int newRow = (int)(newY);
+    int newColumn = (int)(newX);
+
+
+    // Y( row ) step
+    if (newRow != row) {
+        // If unit can go to cell
+        if (newRow < 0) {
+            pointerToUnitData->y = row + cellBeginValue;
+            break;
+        }
+        if (newRow >= rowsCount) {
+            pointerToUnitData->y = row + cellEndValue;
+            break;
+        }
+        if(!MoveUnitTo(pointerToUnitData, pointerToUnitData->x, newY)) {
+            // Can not move cell down
+            if (newRow > row) {
+                pointerToUnitData->y = row + cellEndValue;
+            } else {
+                pointerToUnitData->y = row + cellBeginValue;
+            }
+        }
+    } else {
+        pointerToUnitData->y = newY;
+    }
+
+    // X( column ) step
+    if (newColumn != column) {
+        // If unit can go to cell
+        if (newColumn < 0) {
+            pointerToUnitData->x = column + cellBeginValue;
+            break;
+        }
+        if (newColumn >= columnsCount) {
+            pointerToUnitData->x = column + cellEndValue;
+            break;
+        }
+        if (!MoveUnitTo(pointerToUnitData, newX, pointerToUnitData->y)) {
+            // Can not move cell right
+            if (newColumn > column) {
+                pointerToUnitData->x = column + cellEndValue;
+            } else {
+                pointerToUnitData->x = column + cellBeginValue;
+            }
+        }
+    } else {
+        pointerToUnitData->x = newX;
+    }
+    pointerToUnitData->order_x = 0;
+    pointerToUnitData->order_y = 0;
+    pointerToUnitData->speed_x = 0;
+    pointerToUnitData->speed_y = 0;
 }

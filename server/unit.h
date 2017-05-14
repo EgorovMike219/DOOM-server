@@ -14,6 +14,13 @@ typedef enum UnitType
     UnitType_Hero,
 } UnitType;
 
+typedef enum UnitOrder
+{
+    UnitOrder_Forward		= 1,
+    UnitOrder_None			= 0,
+    UnitOrder_Backward		= -1
+};
+
 const char* UnitName_None;
 const char* UnitName_Hero;
 
@@ -23,12 +30,16 @@ typedef struct UnitData
     UnitType type;
     float x;
     float y;
-    int row;
-    int column;
     int health;
     WeaponType weapon;
     int count_of_charge;
-    int speed; // количество проходимых клеток за секунду
+    // количество проходимых клеток за секунду
+    // если скорость положительная то двигаемя направо,
+    // а если отрицательная то налево
+    float speed_x;
+    float speed_x;
+    UnitOrder order_y;
+    UnitOrder order_x;
 } UnitData;
 
 
@@ -38,6 +49,14 @@ WeaponType GetUnitDefaultWeapon(UnitType unitType);
 
 int GetUnitDefaultHealth(UnitType unitType);
 
+float GetUnitSpeed(UnitType unitType);
+
 UnitType GetUnitTypeFromCell(unsigned char cellSymbol);
+
+bool MoveUnitTo(UnitData* pointerToUnitData, float newX, float newY);
+
+void SetBomb(UnitData* pointerToUnitData);
+
+void UpdateUnit(UnitData* pointerToUnitData, float deltaTime);
 
 #endif //DOOM_SERVER_UNITTYPE_H
