@@ -19,7 +19,7 @@ typedef enum UnitOrder
     UnitOrder_Forward		= 1,
     UnitOrder_None			= 0,
     UnitOrder_Backward		= -1
-};
+} UnitOrder;
 
 const char* UnitName_None;
 const char* UnitName_Hero;
@@ -37,7 +37,7 @@ typedef struct UnitData
     // если скорость положительная то двигаемя направо,
     // а если отрицательная то налево
     float speed_x;
-    float speed_x;
+    float speed_y;
     UnitOrder order_y;
     UnitOrder order_x;
 } UnitData;
@@ -52,11 +52,5 @@ int GetUnitDefaultHealth(UnitType unitType);
 float GetUnitSpeed(UnitType unitType);
 
 UnitType GetUnitTypeFromCell(unsigned char cellSymbol);
-
-bool MoveUnitTo(UnitData* pointerToUnitData, float newX, float newY);
-
-void SetBomb(UnitData* pointerToUnitData);
-
-void UpdateUnit(UnitData* pointerToUnitData, float deltaTime);
 
 #endif //DOOM_SERVER_UNITTYPE_H

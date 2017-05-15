@@ -5,8 +5,7 @@
 #ifndef DOOM_SERVER_CONSOLECOLOR_H
 #define DOOM_SERVER_CONSOLECOLOR_H
 
-enum ConsoleColor
-{
+typedef enum ConsoleColor {
     ConsoleColor_Black = 0,
     ConsoleColor_DarkBlue = 1,
     ConsoleColor_DarkGreen = 2,
@@ -23,6 +22,6 @@ enum ConsoleColor
     ConsoleColor_Magenta = 13,
     ConsoleColor_Yellow = 14,
     ConsoleColor_White = 15
-};
+} ConsoleColor;
 
 #endif //DOOM_SERVER_CONSOLECOLOR_H

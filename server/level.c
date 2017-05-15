@@ -5,8 +5,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-const float cellEndValue = 0.999f;
-const float cellBeginValue = 0.001f;
 
 const unsigned char CellSymbol_Empty = ' ';
 const unsigned char CellSymbol_Wall = '#';
@@ -14,6 +12,40 @@ const unsigned char CellSymbol_Hero = 'h';
 const unsigned char CellSymbol_Heart = '+';
 const unsigned char CellSymbol_Poison = '-';
 const unsigned char CellSymbol_Bomb = '*';
+
+unsigned char GetRenderCellSymbol(unsigned char cellSymbol)
+{
+    if (cellSymbol == CellSymbol_Empty) return  ' ';
+    if (cellSymbol == CellSymbol_Wall) return  '#';
+    if (cellSymbol == CellSymbol_Hero) return  'h';
+    if (cellSymbol == CellSymbol_Heart) return  '+';
+    if (cellSymbol == CellSymbol_Poison) return  '+';
+    if (cellSymbol == CellSymbol_Bomb) return  'b';
+
+    return '?';
+}
+
+ConsoleColor GetRenderCellSymbolColor(unsigned char cellSymbol) {
+    if (cellSymbol == CellSymbol_Empty) return ConsoleColor_Black;
+    if (cellSymbol == CellSymbol_Wall) return ConsoleColor_White;
+    if (cellSymbol == CellSymbol_Hero) return ConsoleColor_Yellow;
+    if (cellSymbol == CellSymbol_Heart) return ConsoleColor_Red;
+
+    return ConsoleColor_Gray;
+}
+
+
+ConsoleColor GetRenderCellSymbolBackgroundColor(unsigned char cellSymbol) {
+    if (cellSymbol == CellSymbol_Wall) return ConsoleColor_White;
+    if (cellSymbol == CellSymbol_Hero) return ConsoleColor_Gray;
+    if (cellSymbol == CellSymbol_Heart) return ConsoleColor_Gray;
+
+    return ConsoleColor_Black;
+}
+
+ConsoleColor GetRenderHeroColor( int heroHealth ) {
+    return ConsoleColor_Yellow;
+}
 
 void read_from_file(char* pathname) {
     FILE *file;
@@ -23,7 +55,7 @@ void read_from_file(char* pathname) {
     {
         printf("can't open file\n");
     }
-    char string[20];
+    char string[30];
     if (fscanf (file, "%s%s%d", string, string, &reductionHealth) == EOF) {
         printf("can't read value of reductionHealth\n");
         exit(1);
@@ -71,5 +103,6 @@ void read_from_file(char* pathname) {
             levelData0[i][j] = str[j];
         }
     }
+    getchar();
     fclose(file);
 }
