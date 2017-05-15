@@ -34,7 +34,7 @@ void SetBomb(UnitData* pointerToUnitData);
 void UpdateUnit(UnitData* pointerToUnitData, float deltaTime);
 
 void SetupSystem();
-void Initialize();
+void Initialize(char* pathname);
 void Update();
 void Shutdown();
 void Render();

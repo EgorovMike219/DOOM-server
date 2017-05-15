@@ -55,7 +55,7 @@ void read_from_file(char* pathname) {
     {
         printf("can't open file\n");
     }
-    char string[30];
+    char string[40];
     if (fscanf (file, "%s%s%d", string, string, &reductionHealth) == EOF) {
         printf("can't read value of reductionHealth\n");
         exit(1);

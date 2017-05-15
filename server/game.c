@@ -29,9 +29,9 @@ void SetupSystem() {
     RenderSystemInitialize();
 }
 
-void Initialize() {
+void Initialize(char* pathname) {
     //read levelData0 and others
-    read_from_file("/home/egorov/CLionProjects/DOOM-server/server/map.txt");
+    read_from_file(pathname);
 
     // Set clockLastFrame start value
     clockLastFrame = clock();
@@ -158,7 +158,7 @@ void Update() {
 
     // Hero dead
     if( unitsData[heroIndex].health <= 0 ) // для одиночной игры
-        Initialize();
+        isGameActive = false;
 }
 
 void Shutdown(){
