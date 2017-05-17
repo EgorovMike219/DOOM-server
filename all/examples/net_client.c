@@ -23,8 +23,8 @@ int main() {
 		return -1;
 	}
 	// Подключаемся к серверу. Функция отправляет и принимает несколько пакетов
-	if (d_client_connect(serv_addr) < 0) {
-		printf("Error dconnect!\n");
+	if (d_client_connect(serv_addr, 0) < 0) {
+		printf("Server connection error\n");
 		return -1;
 	}
 
@@ -46,7 +46,6 @@ int main() {
 		// Пока ответный пакет не получен, пробуем получить его.
 		// У клиента эта функция получает пакет любого типа,
 		// но притом проверяет, что пакет пришёл от сервера.
-		// Если 'tick' > 0, то все не GAME пакеты отбрасываются,
 		// а у оставшихся проверяется, что их 'stamp' >= переданного 'tick'
 		while (d_client_get(temp_pack, sizeof(*temp_pack), temp_stamp) == -2) {
 			continue;
