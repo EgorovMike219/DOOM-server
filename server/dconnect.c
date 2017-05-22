@@ -76,7 +76,7 @@ int transform_to_hr_(const struct sockaddr_in* sock, HR_ADDRESS* hr) {
 // ========================================================================== //
 
 void* make_UPACK (size_t data_size) {
-	return malloc(sizeof(int16_t) + sizeof(TICK_TYPE) + data_size);
+	return malloc(UPACK_SIZE(data_size));
 }
 
 
@@ -89,6 +89,18 @@ void* make_UPACK (size_t data_size) {
 // ========================================================================== //
 // COMMON NETWORK FUNCTIONS
 // ========================================================================== //
+
+void d_all_delay(float time) {
+	float F_CLOCKS_PER_SEC = (float)CLOCKS_PER_SEC;
+	float clk_start_sec = clock() / F_CLOCKS_PER_SEC;
+	float clk_sec = clock() / F_CLOCKS_PER_SEC;
+	while (clk_sec < clk_start_sec + time) {
+		clk_sec = clock() / F_CLOCKS_PER_SEC;
+	}
+}
+
+
+
 
 int d_all_connect(int type) {
 	if ((D_NET_DATA.socket = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
@@ -198,7 +210,6 @@ int d_all_recvraw(void* data, size_t data_length,
 // ========================================================================== //
 
 int d_client_connect(HR_ADDRESS server, int reconnect) {
-	const int MAX_RECVRAW_TRYES = 32768;
 	int last_out_code = 0;
 	int recvraw_tryes = 0;
 
@@ -227,7 +238,7 @@ int d_client_connect(HR_ADDRESS server, int reconnect) {
 	pack_T.stamp = DP_S_ASK;
 
 	while (1) {
-		for (recvraw_tryes = 0; recvraw_tryes < MAX_RECVRAW_TRYES;
+		for (recvraw_tryes = 0; recvraw_tryes < NET_REPEAT_TRYES;
 				recvraw_tryes++) {
 			if (d_all_sendraw(&pack_T, sizeof(pack_T),
 					&(D_CLIENT_NET_DATA.s_addr),
@@ -236,6 +247,9 @@ int d_client_connect(HR_ADDRESS server, int reconnect) {
 				fprintf(stderr, "Connect failure: Something has gone wrong\n");
 				return -1;
 			}
+
+			d_all_delay(NET_PING);
+
 			last_out_code = d_all_recvraw(&pack_T, sizeof(pack_T),
 							&pack_T_addr, &pack_T_addl);
 

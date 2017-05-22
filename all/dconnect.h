@@ -1,17 +1,18 @@
 #ifndef DCONNECT_INCLUDED
 #define DCONNECT_INCLUDED
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
 #include <errno.h>
-#include <stdio.h>
+#include <netinet/in.h>
 #include <stdint.h>
-#include <strings.h>
-#include <string.h>
-#include <unistd.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <strings.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <time.h>
+#include <unistd.h>
 
 #include "dconnect_settings.h"
 
@@ -53,6 +54,8 @@ typedef struct All_Net_packheader_t {
 	char data[1];
 } UPACK_HEAD;
 
+// Return UPACK size to place 'i' chars into data
+#define UPACK_SIZE(i) (sizeof(int16_t) + sizeof(TICK_TYPE) + i)
 
 /*
  * Create UPACK_HEAD using malloc, where data will be data[data_size]
@@ -73,6 +76,14 @@ void* make_UPACK(size_t data_size);
 // ========================================================================== //
 // COMMON NETWORK FUNCTIONS
 // ========================================================================== //
+
+/*
+ * Delay execution
+ *
+ * @param time: Time (in seconds) to delay execution for
+ */
+void d_all_delay(float time);
+
 
 /*
  * Create an UDP socket and bind it.
