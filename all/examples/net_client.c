@@ -5,8 +5,9 @@
 
 
 int main() {
-	// Создаём пакет, способный хранить строку длиной 128 char
-	UPACK_HEAD* temp_pack = make_UPACK(128);
+	const size_t MAX_STRLEN = 128;
+	// Создаём пакет, способный хранить строку длиной MAX_STRLEN char
+	UPACK_HEAD* temp_pack = make_UPACK(MAX_STRLEN);
 	// Создаём адрес
 	HR_ADDRESS serv_addr;
 	// Локальный штамп "времени" последнего отправленного пакета
@@ -40,14 +41,15 @@ int main() {
 
 		// Отправляем пакет и печатаем данные об этом
 		printf("Send success (0)? %d\n",
-				d_client_send(temp_pack, sizeof(*temp_pack),
+				d_client_send(temp_pack, UPACK_SIZE(MAX_STRLEN),
 						NET_REPEAT_CLIENT));
 
 		// Пока ответный пакет не получен, пробуем получить его.
 		// У клиента эта функция получает пакет любого типа,
 		// но притом проверяет, что пакет пришёл от сервера.
 		// а у оставшихся проверяется, что их 'stamp' >= переданного 'tick'
-		while (d_client_get(temp_pack, sizeof(*temp_pack), temp_stamp) == -2) {
+		while (d_client_get(temp_pack, UPACK_SIZE(MAX_STRLEN),
+				temp_stamp) == -2) {
 			continue;
 		}
 		// Печатаем ответ сервера

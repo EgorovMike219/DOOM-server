@@ -9,8 +9,9 @@
 
 
 int main() {
+	const size_t MAX_STRLEN = 128;
 	// Создаём пакет, способный хранить строку длиной 128 char
-	UPACK_HEAD* temp_pack = make_UPACK(128);
+	UPACK_HEAD* temp_pack = make_UPACK(MAX_STRLEN);
 	// Создаём адрес
 	HR_ADDRESS temp_addr;
 
@@ -23,7 +24,10 @@ int main() {
 		// Пока пакет не получен, пробуем его получить (функция неблокирующая)
 		// У сервера эта функция выполняет ровно одно получение пакета
 		// Если указан другой 'mode', функция уничтожит все неподходящие пакеты
-		if (d_server_get(0, temp_pack, sizeof(*temp_pack), &temp_addr) == -2) {
+		if (d_server_get(0,
+				temp_pack, UPACK_SIZE(MAX_STRLEN),
+				&temp_addr)
+				== -2) {
 			continue;
 		}
 		// Печатаем отправителя в обычном IPv4 виде (IP:порт)
@@ -35,8 +39,9 @@ int main() {
 			if (temp_pack ->stamp == DP_S_ASK) {
 				// Заменим 'stamp' согласно протоколу и отправим пакет
 				temp_pack ->stamp = DP_S_SUCCESS;
-				printf("Connect reponse success (0)? %d\n", d_server_send(temp_pack,
-						sizeof(*temp_pack), temp_addr, NET_REPEAT_ONE));
+				printf("Connect reponse success (0)? %d\n",
+						d_server_send(temp_pack, UPACK_SIZE(MAX_STRLEN),
+								temp_addr, NET_REPEAT_SERVER));
 			}
 		}
 		else {
@@ -49,7 +54,7 @@ int main() {
 			// Отправляем ответ в виде GAME-пакета и печатаем результат отправки
 			temp_pack ->type = DP_GAME;
 			printf("Data repsonse success (0)? %d\n",
-					d_server_send(temp_pack, sizeof(*temp_pack), temp_addr,
+					d_server_send(temp_pack, UPACK_SIZE(MAX_STRLEN), temp_addr,
 							NET_REPEAT_SERVER));
 		}
 		printf("\n");
