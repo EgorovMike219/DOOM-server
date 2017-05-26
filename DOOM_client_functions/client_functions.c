@@ -27,6 +27,7 @@ void ClientStartGame() {
 
   pthread_join(send_thread, NULL);
   pthread_join(receive_render_thread, NULL);
+
   endwin();
   return;
 }

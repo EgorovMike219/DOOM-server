@@ -34,8 +34,6 @@ void ClientStartGame();
 
 void* SendData();
 
-void* RenderScreen(); //renders client screen
-
 void* GetData_and_RenderScreen(); //gets data from the server
 
 
