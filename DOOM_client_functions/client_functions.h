@@ -18,6 +18,7 @@ typedef enum {forward = 119, left = 97, backward = 115, right = 100,
 
 
 UPACK_HEAD* pack_to_send;
+UPACK_HEAD* pack_to_receive;
 TICK_TYPE tick;
 
 typedef struct ConsoleSymbolData {

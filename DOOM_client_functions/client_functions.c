@@ -10,6 +10,8 @@ void ClientStartGame() {
   tick = 1;
   pack_to_send->type = DP_CLIENT_ACTION;
 
+
+
   initscr();
   start_color();
   nodelay(stdscr, true);
@@ -25,7 +27,7 @@ void ClientStartGame() {
 
   pthread_join(send_thread, NULL);
   pthread_join(receive_render_thread, NULL);
-
+  endwin();
   return;
 }
 
@@ -84,9 +86,12 @@ void* GetData_and_RenderScreen() {
   attron(COLOR_PAIR(1));
   while (true) {
     //get data
-    d_client_get(screenBuffer, screenRows * screenColumns * sizeof(ConsoleSymbolData),
+    d_client_get(pack_to_receive, screenRows * screenColumns * sizeof(ConsoleSymbolData),
                 tick);
-
+    if (pack_to_receive->type == DP_CLIENT_STOP) {
+      printw("The game is over");
+      return NULL;
+    }
     //render it
     int row = 0;
     int column = 0;
@@ -94,7 +99,7 @@ void* GetData_and_RenderScreen() {
     attron(COLOR_PAIR(1));
     for (row; row < screenRows; ++row) {
       for (column; column < screenColumns; ++column) {
-        printw("%c", screenBuffer[row][column].symbol);
+        printw("%c", pack_to_receive->data[row][column].symbol);
       }
     }
 
