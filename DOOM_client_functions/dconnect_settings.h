@@ -16,6 +16,7 @@
 #define DP_SERVER_MESSAGE 13
 #define DP_STATS_QUERY 14
 #define DP_STATS_RESULT 15
+#define DP_CLIENT_STOP 16
 
 
 
@@ -43,7 +44,7 @@
 
 #define NET_REPEAT_ONE 1
 #define NET_REPEAT_CLIENT 2
-#define NET_REPEAT_SERVER 8
+#define NET_REPEAT_SERVER 4
 #define NET_REPEAT_TRYES 128
 
 
