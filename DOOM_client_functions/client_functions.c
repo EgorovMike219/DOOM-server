@@ -6,15 +6,16 @@
 
 void ClientStartGame() {
   HR_ADDRESS serv_addr;
-  serv_addr.port = NET_SERVER_PORT;
-  serv_addr.ip = "insert ip";
+  serv_addr.port = NET_PORT;
+  printf("What ip-adress you want to connect?\n");
+  scanf("%s", serv_addr.ip);
   if (d_all_connect(1) < 0) {
     printf("Server connection fatal error\n");
-    return -1;
+    exit(-1);
   }
   if (d_client_connect(serv_addr, 0) < 0) {
     printf("Server connection error\n");
-    return -1;
+    exit(-1);
   }
   pack_to_send = make_UPACK(sizeof(keyboard_key));
   tick = 1;
@@ -107,19 +108,19 @@ void* GetData_and_RenderScreen() {
 
     tick = pack_to_receive->stamp;
     //render it
-    int row = 0;
-    int column = 0;
+    int row;
+    int column;
     init_pair(1, COLOR_WHITE, COLOR_BLACK);
     attron(COLOR_PAIR(1));
-    for (row; row < screenRows; ++row) {
-      for (column; column < screenColumns; ++column) {
-        printw("%c", pack_to_receive->data[row][column].symbol);
+    memcpy(screenBuffer, pack_to_receive->data, screenRows *
+           screenColumns * sizeof(ConsoleSymbolData));
+    for (row = 0; row < screenRows; ++row) {
+      for (column = 0; column < screenColumns; ++column) {
+        printw("%s", screenBuffer[row][column].symbol);
       }
     }
 
     refresh();
-
-    //if signal to finish - break;
   }
   attroff(COLOR_PAIR(1));
   return NULL;
