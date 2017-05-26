@@ -2,6 +2,7 @@
 #define DOOM_SERVER_IPTOID_H
 
 #include <string.h>
+#include "../all/dconnect.h"
 
 
 int IpToId(char* ip) {
@@ -16,6 +17,7 @@ int IpToId(char* ip) {
     }
     return id;
 }
+
 
 
 #endif //DOOM_SERVER_IPTOID_H
