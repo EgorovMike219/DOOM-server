@@ -92,10 +92,6 @@ void d_all_delay(float time);
  * 				= 0: server
  * 				= 1: client
  * 				= 2: statistics
- * @param reconnect: Is reconnect procedure required
- * 				= 1: Reconnect, use given IP adress
- * 				= 2: Reconnect using valid D_CLIENT_NET_DATA
- * 				Oth: Do not reconnect
  *
  * @return 0 if successful
  * @return -1 for errors
@@ -162,6 +158,10 @@ int d_all_recvraw(void* data, size_t data_length,
  * CLIENT: Send "hello" datagram to server
  *
  * @param server: Info of server to be connected to
+ * @param reconnect: Is reconnect procedure required
+ * 				= 1: Reconnect, use given IP adress
+ * 				= 2: Reconnect using valid D_CLIENT_NET_DATA
+ * 				Oth: Do not reconnect
  *
  * @return 0 if successful
  * @return -1 for errors
@@ -176,6 +176,7 @@ int d_client_connect(HR_ADDRESS server, int reconnect);
  *
  * @param data: Data to send
  * @param data_length
+ * @param repeats: Send UDP packet this number of times
  *
  * @return 0 if successful
  * @return -1 for errors
@@ -191,8 +192,8 @@ int d_client_send(const void* data, size_t data_length, size_t repeats);
  * @param data: Place for data to be put to
  * @param data_length
  * @param tick: Minimum required tick to get data
- * 				= 0, all datagrams are allowed (including usual)
- * 				> 0, all unusual and 'old' datagrams are ignored
+ * 				= 0, all datagrams are allowed
+ * 				> 0, 'old' datagrams are ignored (which have tick < old)
  *
  * @return 0 if successful
  * @return -1 for errors
@@ -216,6 +217,7 @@ int d_client_get(void* data, size_t data_length, TICK_TYPE tick);
  * @param data: Data to send
  * @param data_length
  * @param destination: Adressee info
+ * @param repeats: Send UDP packet this number of times
  *
  * @return 0 if successful
  * @return -1 for errors
