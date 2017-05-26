@@ -8,9 +8,9 @@
 #include "dconnect.h"
 #include "dconnect_settings.h"
 
-#define screenRows  20
-#define screenColumns 20
-#define receive_pack_size (screenRows * screenColumns * sizeof(char))
+#define screenRows  10
+#define screenColumns 10
+#define receive_pack_size (screenColumns * screenRows)
 
 
 typedef enum {forward = 119, left = 97, backward = 115, right = 100,

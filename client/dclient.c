@@ -5,7 +5,7 @@
 
 
 void ClientStartGame() {
-  tick = 1;
+  tick = 0;
   game_is_on = true;
   HR_ADDRESS serv_addr;
   serv_addr.port = NET_PORT;
@@ -19,17 +19,49 @@ void ClientStartGame() {
     printf("Server connection error\n");
     exit(-1);
   }
-  pack_to_send = make_UPACK(sizeof(keyboard_key));
-  pack_to_receive = make_UPACK(receive_pack_size);
-  tick = 1;
-  pack_to_send->type = DP_CLIENT_ACTION;
-
-
   initscr();
   start_color();
   nodelay(stdscr, true);
   keypad(stdscr, true);
   noecho();
+
+  printw("connection succsessful");
+  refresh();
+  move(0, 0);
+
+  pack_to_receive = make_UPACK(sizeof(1));
+  d_client_get(pack_to_receive, UPACK_SIZE(1), tick);
+
+  while (pack_to_receive->type != DP_GAME_PREPARE) {
+    d_client_get(pack_to_receive, UPACK_SIZE(1), tick);
+  }
+
+
+  while (pack_to_receive->type == DP_GAME_PREPARE) {
+    printw("THE GAME WILL START SOON, PLEASE WAIT...\n");
+    refresh();
+    move(0, 0);
+    d_client_get(pack_to_receive, UPACK_SIZE(1), tick);
+  }
+
+
+  while (pack_to_receive->type == DP_GAME_BEGIN) {
+    printw("THE GAME STARTS NOW!\n");
+    init_pair(1, COLOR_GREEN, COLOR_RED);
+    attron(COLOR_PAIR(1));
+    printw("GET READY!!!\n");
+    refresh();
+    move(0, 0);
+    attroff(COLOR_PAIR(1));
+    d_client_get(pack_to_receive, UPACK_SIZE(1), tick);
+  }
+
+
+  pack_to_send = make_UPACK(sizeof(keyboard_key));
+  pack_to_receive = make_UPACK(receive_pack_size);
+  tick = 1;
+  pack_to_send->type = DP_CLIENT_ACTION;
+
 
   pthread_t send_thread;
   pthread_create(&send_thread, NULL, SendData, NULL);
@@ -105,28 +137,39 @@ void* GetData_and_RenderScreen() {
       printf("THE GAME IS OVER\n");
       return NULL;
     }
-    if (pack_to_receive->type != DP_GAME) {
-      continue;
+
+    if (pack_to_receive->type == DP_GAME) { //render map
+      tick = pack_to_receive->stamp;
+      int row;
+      int column;
+      init_pair(1, COLOR_GREEN, COLOR_BLACK);
+      attron(COLOR_PAIR(1));
+      char screenBuffer[screenRows][screenColumns];
+      memcpy(screenBuffer, pack_to_receive->data, receive_pack_size);
+      for (row = 0; row < screenRows; ++row) {
+        for (column = 0; column < screenColumns; ++column) {
+          printw("%c ", screenBuffer[row][column]);
+        }
+        printw("\n");
+      }
+      move(0, 0);
+      refresh();
+      attroff(COLOR_PAIR(1));
     }
 
-    tick = pack_to_receive->stamp;
-    //render it
-    int row;
-    int column;
-    init_pair(1, COLOR_GREEN, COLOR_BLACK);
-    attron(COLOR_PAIR(1));
-    char screenBuffer[10][10];
-    memcpy(screenBuffer, pack_to_receive->data, receive_pack_size);
-    move(0, 0);
-    for (row = 0; row < screenRows; ++row) {
-      for (column = 0; column < screenColumns; ++column) {
-        printw("%c ", screenBuffer[row][column]);
-      }
-      printw("\n");
+    if (pack_to_receive->type == DP_GAME_INFO) { //render HP
+      tick = pack_to_receive->stamp;
+      char game_info[10];
+      memcpy(game_info, pack_to_receive->data, 10);
+      move(screenRows + 2, screenColumns / 2);
+      init_pair(1, COLOR_RED, COLOR_WHITE);
+      attron(COLOR_PAIR(1));
+      printw("%s", game_info);
+      refresh();
+      move(0, 0);
+      attroff(COLOR_PAIR(1));
     }
-    refresh();
   }
-  attroff(COLOR_PAIR(1));
   return NULL;
 }
 
