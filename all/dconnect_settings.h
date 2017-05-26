@@ -11,12 +11,13 @@
 #define DP_RECONNECT 2
 
 #define DP_GAME 10
+
 #define DP_CLIENT_ACTION 11
 #define DP_CLIENT_MESSAGE 12
-#define DP_SERVER_MESSAGE 13
-#define DP_STATS_QUERY 14
-#define DP_STATS_RESULT 15
 #define DP_CLIENT_STOP 16
+
+#define DP_SERVER_MESSAGE 13
+
 
 
 

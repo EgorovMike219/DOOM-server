@@ -55,7 +55,8 @@ typedef struct All_Net_packheader_t {
 } UPACK_HEAD;
 
 // Return UPACK size to place 'i' chars into data
-#define UPACK_SIZE(i) (sizeof(int16_t) + sizeof(TICK_TYPE) + i)
+// 86 is for x86 architecture
+#define UPACK_SIZE(i) (86 + i)
 
 /*
  * Create UPACK_HEAD using malloc, where data will be data[data_size]
