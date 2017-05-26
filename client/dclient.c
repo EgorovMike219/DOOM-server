@@ -23,6 +23,7 @@ void ClientStartGame() {
   start_color();
   nodelay(stdscr, true);
   keypad(stdscr, true);
+  curs_set(0);
   noecho();
 
   printw("connection succsessful");
