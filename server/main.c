@@ -68,7 +68,7 @@
 
 int main() {
     SetupSystem();
-    Initialize("/home/egorov/CLionProjects/DOOM-server/server/map.txt");
+    Initialize("./map.txt");
     do {
         Render();
         Update();
