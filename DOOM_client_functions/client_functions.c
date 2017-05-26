@@ -5,7 +5,17 @@
 
 
 void ClientStartGame() {
-
+  HR_ADDRESS serv_addr;
+  serv_addr.port = NET_SERVER_PORT;
+  serv_addr.ip = "insert ip";
+  if (d_all_connect(1) < 0) {
+    printf("Server connection fatal error\n");
+    return -1;
+  }
+  if (d_client_connect(serv_addr, 0) < 0) {
+    printf("Server connection error\n");
+    return -1;
+  }
   pack_to_send = make_UPACK(sizeof(keyboard_key));
   tick = 1;
   pack_to_send->type = DP_CLIENT_ACTION;
