@@ -11,13 +11,12 @@
 #define DP_RECONNECT 2
 
 #define DP_GAME 10
+#define DP_GAME_INFO 11
+#define DP_GAME_PREPARE 12
+#define DP_GAME_BEGIN 13
 
-#define DP_CLIENT_ACTION 11
-#define DP_CLIENT_MESSAGE 12
-#define DP_CLIENT_STOP 16
-
-#define DP_SERVER_MESSAGE 13
-
+#define DP_CLIENT_ACTION 20
+#define DP_CLIENT_STOP 21
 
 
 
@@ -41,7 +40,7 @@
 #define UDP_MAX_PACKET_SIZE 65536
 
 #define NET_PORT 59200
-#define NET_PING 0.500
+#define NET_PING 0.250
 
 #define NET_REPEAT_ONE 1
 #define NET_REPEAT_CLIENT 2
