@@ -3,17 +3,18 @@
 #include <stdio.h>
 #include <ncurses.h>
 #include <stdlib.h>
+#include <math.h>
 
 
 const int maxUnitsCount = 35;
 
 const float cellBeginValue = 0.001f;
 const float cellEndValue = 0.999f;
-
+extern int d;
 
 /////////////////////////////////////
 // Logics variables
-bool isGameActive = true;
+bool isGameActive = false;
 clock_t clockLastFrame = 0;
 
 int framesCounter = 0;
@@ -29,6 +30,25 @@ void SetupSystem() {
     RenderSystemInitialize();
 }
 
+bool InsertUnitOnMap(int *r, int *c) {
+    int i, j, r1, c1;
+    for (i = -1; i <= 1; ++i){
+        for (j = -1; j <= 1; ++j) {
+            r1 = *r + i;
+            c1 = *c + j;
+            if ( ( (r1 >= 0) && (r1 < rowsCount))  && ( (c1 >= 0) && (c1 < columnsCount)) ) {
+                if (levelData[r1][c1] == CellSymbol_Empty) {
+                    levelData[r1][c1] = CellSymbol_Hero;
+                    *r = r1;
+                    *c = c1;
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
 void Initialize(char* pathname) {
     //read levelData0 and others
     read_from_file(pathname);
@@ -36,12 +56,12 @@ void Initialize(char* pathname) {
     // Set clockLastFrame start value
     clockLastFrame = clock();
 
-    unitsData = (UnitData*)malloc(maxUnitsCount * sizeof(UnitData));
+    unitsData = (UnitData*)malloc(unitsCount * sizeof(UnitData));
     levelData = (char**)malloc(rowsCount * sizeof(char*));
     for (int i = 0; i < rowsCount; ++i) {
         levelData[i] = (char *) malloc(columnsCount * sizeof(char));
     }
-    unitsCount = 0;
+    //unitsCount = 0; определяем в main-е
 
     int r, c;
     // Load level
@@ -52,22 +72,32 @@ void Initialize(char* pathname) {
             unsigned char cellSymbol = levelData0[r][c];
 
             levelData[r][c] = cellSymbol;
-
-            if (cellSymbol == CellSymbol_Hero) {
-                heroIndex = unitsCount;
-                UnitType unitType = GetUnitTypeFromCell(cellSymbol);
-                unitsData[unitsCount].type = unitType;
-                unitsData[unitsCount].y = (float)(r);
-                unitsData[unitsCount].x = (float)(c);
-                unitsData[unitsCount].health = GetUnitDefaultHealth(unitType);
-                unitsData[unitsCount].speed_x = 0.0;
-                unitsData[unitsCount].speed_y = 0.0;
-                unitsData[unitsCount].order_x = UnitOrder_None;
-                unitsData[unitsCount].order_y = UnitOrder_None;
-                unitsCount++;
-            }
         }
     }
+    int i, row, column;
+
+    liveUnitsCount = unitsCount;
+    UnitType unitType;
+    for (i = 0; i < unitsCount; ++i) {
+        unitType = UnitType_Hero;
+        do {
+            row = rand() % rowsCount;
+            column = rand() % columnsCount;
+        } while (InsertUnitOnMap(&row, &column) == false);
+        unitsData[i].type = unitType;
+        unitsData[i].id = i;
+        unitsData[i].y = (float)(row);
+        unitsData[i].x = (float)(column);
+        unitsData[i].health = GetUnitDefaultHealth(unitType);
+        unitsData[i].speed_x = 0.0;
+        unitsData[i].speed_y = 0.0;
+        unitsData[i].order_x = UnitOrder_None;
+        unitsData[i].order_y = UnitOrder_None;
+        unitsData[i].weapon = GetUnitDefaultWeapon(unitType);
+        unitsData[i].count_of_charge = GetUnitDefaultCountOfCharge();
+    }
+    heroIndex = 0;
+    isGameActive = true;  // Костя просил убрать
 }
 
 void Render() {
@@ -124,29 +154,72 @@ void Update() {
         framesCounter = 0;
     }
 
-    int c;
+    int c, i;
     c = getch();
     unitsData[heroIndex].last_command = c;
     // Hero control
-    if ( c == 'w' ) {
+    /*
+    for (i = 0; i < unitsCount; ++i) {
+        c = unitsData[i].last_command;
+        unitsData[i].last_command = -1; // хорошо было бы иметь атомики
+        if (c == 'w') {
+            unitsData[i].order_y = UnitOrder_Backward;
+        }
+        if (c == 's') {
+            unitsData[i].order_y = UnitOrder_Forward;
+        }
+
+        if (c == 'a') {
+            unitsData[i].order_x = UnitOrder_Backward;
+        }
+        if (c == 'd') {
+            unitsData[i].order_x = UnitOrder_Forward;
+        }
+        if (c == 'b') {
+            SetBomb(&unitsData[i]);
+        }
+        if (c == 'q') {
+            isGameActive = false;
+        }
+    }
+     */ //это все правильно, убрал на время теста
+
+    if (c == 'w') {
         unitsData[heroIndex].order_y = UnitOrder_Backward;
     }
-    if ( c == 's' ) {
+    if (c == 's') {
         unitsData[heroIndex].order_y = UnitOrder_Forward;
     }
 
-    if ( c == 'a' ) {
+    if (c == 'a') {
         unitsData[heroIndex].order_x = UnitOrder_Backward;
     }
-    if ( c == 'd' ) {
+    if (c == 'd') {
         unitsData[heroIndex].order_x = UnitOrder_Forward;
     }
-    if ( c == 'b' ) {
+    if (c == 'b') {
         SetBomb(&unitsData[heroIndex]);
     }
-    if ( c == 'q' ) {
+    if (c == 'q') {
         isGameActive = false;
     }
+    unitsData[heroIndex + 1].last_command = c;
+    if ( c == '8' ) {
+        unitsData[heroIndex + 1].order_y = UnitOrder_Backward;
+    }
+    if ( c == '5' ) {
+        unitsData[heroIndex + 1].order_y = UnitOrder_Forward;
+    }
+    if ( c == '4' ) {
+        unitsData[heroIndex + 1].order_x = UnitOrder_Backward;
+    }
+    if ( c == '6' ) {
+        unitsData[heroIndex + 1].order_x = UnitOrder_Forward;
+    }
+    if ( c == '0' ) {
+        SetBomb(&unitsData[heroIndex + 1]);
+    }
+
 
     if (c != -1) {
         RenderSystemDrawChar(rowsCount + 4, 0, (char)(c), ConsoleColor_Gray, ConsoleColor_Black);
@@ -158,7 +231,7 @@ void Update() {
 
 
     // Hero dead
-    if( unitsData[heroIndex].health <= 0 ) // для одиночной игры
+    if( liveUnitsCount <= 1 )
         isGameActive = false;
 }
 
@@ -221,9 +294,9 @@ bool MoveUnitTo(UnitData* pointerToUnitData, float newX, float newY)
                 unitsData[u].health -= damage;
 
                 // If enemy unit die
-                if (unitsData[u].health <= 0)
-                {
+                if (unitsData[u].health <= 0) {
                     levelData[row][column] = CellSymbol_Empty;
+                    liveUnitsCount--;
                 }
 
                 break;
@@ -237,12 +310,15 @@ bool MoveUnitTo(UnitData* pointerToUnitData, float newX, float newY)
         // Heart
         if (destinationCellSymbol == CellSymbol_Heart) {
             canMoveToCell = true;
-            unitsData[heroIndex].health += heartHeal;
+            pointerToUnitData->health += heartHeal;
         }
         // Poison
         if (destinationCellSymbol == CellSymbol_Poison) {
             canMoveToCell = true;
-            unitsData[heroIndex].health -= poisoningEffect;
+            pointerToUnitData->health -= poisoningEffect;
+            if (pointerToUnitData->health <= 0) {
+                liveUnitsCount--;
+            }
         }
     }
 
@@ -279,7 +355,16 @@ void SetBomb(UnitData* pointerToUnitData) {
             (int)(unitsData[u].y) >= row - range_of_damage &&
             (int)(unitsData[u].x) <= column + range_of_damage &&
             (int)(unitsData[u].x) >= column - range_of_damage) {
-            unitsData[u].health -= (int)(damage * range_of_damage / (range_of_damage + 1)); // пока без препятствий
+            unitsData[u].health -= (int)(damage *
+                    range_of_damage /
+                    sqrt(
+                            (pointerToUnitData->x - unitsData[u].x) * (pointerToUnitData->x - unitsData[u].x) +
+                            (pointerToUnitData->y - unitsData[u].y) * (pointerToUnitData->y - unitsData[u].y)
+                    )
+            ); // пока без препятствий
+            if (unitsData[u].health <= 0) {
+                liveUnitsCount--;
+            }
         }
     }
 

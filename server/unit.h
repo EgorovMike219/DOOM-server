@@ -54,4 +54,6 @@ float GetUnitSpeed(UnitType unitType);
 
 UnitType GetUnitTypeFromCell(unsigned char cellSymbol);
 
+int GetUnitDefaultCountOfCharge();
+
 #endif //DOOM_SERVER_UNITTYPE_H

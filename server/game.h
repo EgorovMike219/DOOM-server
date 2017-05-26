@@ -25,6 +25,7 @@ char **levelData;
 
 UnitData *unitsData;
 int unitsCount;
+int liveUnitsCount;
 int heroIndex;
 
 bool MoveUnitTo(UnitData* pointerToUnitData, float newX, float newY);

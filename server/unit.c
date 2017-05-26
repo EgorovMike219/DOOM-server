@@ -37,7 +37,7 @@ float GetUnitSpeed(UnitType unitType) {
         case UnitType_None:
             return 0.0f;
         case UnitType_Hero:
-            return 40000.0f;
+            return 4000.0f;
     }
 }
 
@@ -58,4 +58,8 @@ UnitType GetUnitTypeFromCell(unsigned char cellSymbol)
     }
 
     return UnitType_None;
+}
+
+int GetUnitDefaultCountOfCharge() {
+    return 200;
 }

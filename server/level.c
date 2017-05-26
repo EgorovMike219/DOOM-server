@@ -103,6 +103,5 @@ void read_from_file(char* pathname) {
             levelData0[i][j] = str[j];
         }
     }
-    getchar();
     fclose(file);
 }

@@ -3,7 +3,7 @@ reductionHealthWhileStand = 2
 heartHeal = 150
 poisoningEffect = 150
 range_of_damage = 3
-damage = 20
+damage = 200
 rowsCount = 15
 columnsCount = 35
 ###################################
@@ -19,5 +19,5 @@ columnsCount = 35
 # ### #### ######   -   # #   #   #
 #          #  +   ####### #########
 ############ ######   # # #   #   #
-#h       +          #   #   #   # #
+#        +          #   #   #   # #
 ###################################
