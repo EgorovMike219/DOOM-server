@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-//#include "statistics/statistics.h"
+#include "../statistics/statistics.h"
 
 
 const int maxUnitsCount = 35;
@@ -142,7 +142,7 @@ void Update() {
     // Update all units
     for( int u = 0; u < unitsCount; u++ ) {
         UpdateUnit(&unitsData[u], deltaTime);
-        //record_in_statistics(unitsData[u].id, unitsData[u].health);  надо вернуть в master
+        record_in_statistics(unitsData[u].id, unitsData[u].health);
     }
 
 
