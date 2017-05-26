@@ -37,7 +37,7 @@ float GetUnitSpeed(UnitType unitType) {
         case UnitType_None:
             return 0.0f;
         case UnitType_Hero:
-            return 4000.0f;
+            return 40000.0f;
     }
 }
 

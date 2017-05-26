@@ -40,6 +40,7 @@ typedef struct UnitData
     float speed_y;
     UnitOrder order_y;
     UnitOrder order_x;
+    int last_command;
 } UnitData;
 
 

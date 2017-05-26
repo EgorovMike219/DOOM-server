@@ -126,6 +126,7 @@ void Update() {
 
     int c;
     c = getch();
+    unitsData[heroIndex].last_command = c;
     // Hero control
     if ( c == 'w' ) {
         unitsData[heroIndex].order_y = UnitOrder_Backward;
