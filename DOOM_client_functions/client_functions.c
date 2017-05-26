@@ -11,7 +11,6 @@ void ClientStartGame() {
   pack_to_send->type = DP_CLIENT_ACTION;
 
 
-
   initscr();
   start_color();
   nodelay(stdscr, true);
@@ -35,7 +34,6 @@ void ClientStartGame() {
 void* SendData() {
   while (true) {
     keyboard_key command;
-    tick++;
     pack_to_send->stamp = tick;
 
     //get keyboard command and send it to the server
@@ -69,7 +67,7 @@ void* SendData() {
       pack_to_send->data[0] = -1;
     }
 
-    d_client_send(pack_to_send, UPACK_SIZE(sizeof(int)), NET_REPEAT_CLIENT);
+    d_client_send(pack_to_send, UPACK_SIZE(sizeof(keyboard_key)), NET_REPEAT_CLIENT);
 
     if (command == quit) {
       endwin();
@@ -93,6 +91,11 @@ void* GetData_and_RenderScreen() {
       printw("The game is over");
       return NULL;
     }
+    if (pack_to_receive->type != DP_GAME) {
+      continue;
+    }
+
+    tick = pack_to_receive->stamp;
     //render it
     int row = 0;
     int column = 0;
