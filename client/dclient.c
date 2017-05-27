@@ -9,7 +9,7 @@ void ClientStartGame() {
   game_is_on = true;
   HR_ADDRESS serv_addr;
   serv_addr.port = NET_PORT;
-  printf("What ip-adress you want to connect? Please, enter:\n");
+  printf("Type server IP to connect to: ");
   scanf("%s", serv_addr.ip);
   if (d_all_connect(1) < 0) {
     printf("Server connection fatal error\n");
@@ -186,4 +186,3 @@ void* GetData_and_RenderScreen() {
   }
   return NULL;
 }
-
