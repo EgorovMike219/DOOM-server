@@ -1,6 +1,6 @@
 CC=gcc
-CFLAGS=-c -Wall
-LDFLAGS=
+CFLAGS=-c -Wall -lpthread -pthread
+LDFLAGS=-lpthread -pthread
 SOURCES=main.c dconnect.c game.c level.c unit.c weapon.c
 OBJECTS=$(SOURCES:.c=.o)
 EXECUTABLE=server

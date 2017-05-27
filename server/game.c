@@ -112,7 +112,7 @@ void Update() {
         framesCounter = 0;
     }
 
-    int i;
+    int i, c;
     // Hero control
     for (i = 0; i < unitsCount; ++i) {
         c = unitsData[i].last_command;

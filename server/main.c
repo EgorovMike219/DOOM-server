@@ -1,30 +1,79 @@
 #include "game.h"
 #include "dconnect.h"
+#include "ipToId.h"
+#include "level.h"
+#include <string.h>
 #include <stdio.h>
 #include <pthread.h>
 
+void CommandsIn(void* arg) {
+    HR_ADDRESS temp_addr;
+    UPACK_HEAD* temp_pack = make_UPACK(1);
 
-void Daemon() {
-    int status;
-    p_thread game_thread;
+    while (isGameActive) {
 
-    //текущая сессия сервера
-    status = pthread_create(&game_thread, NULL, CurrentGame, NULL);
-    if (status != 0) {
-        fprintf(stderr, "can't create game thread");
-        exit(ERROR_CREATE_THREAD);
+        d_server_get(0, temp_pack, UPACK_SIZE(1),
+                     &temp_addr);
+
+        int id;
+        resolve_hr(temp_addr, &id);
+
+        if (*(temp_pack->data) == 'q') {
+            remove_id(id);
+        } else {
+            unitsData[id].last_command = *(temp_pack->data);
+        }
+
+        d_all_delay(NET_PING);
     }
+
+    pthread_exit(0);
 }
 
+void CommandsOut(void* arg) {
+    UPACK_HEAD* temp_pack = make_UPACK(rowsCount * columnsCount);
 
-void CurrentGame() {
+    while (isGameActive) {
+        for (int id = 0; id < maxUnitsCount; id++) {
+            HR_ADDRESS addr;
+            resolve_id(&addr, id);
+
+            memcpy(temp_pack->data, levelData,
+                   sizeof(char) * rowsCount * columnsCount);
+            temp_pack->type = DP_GAME;
+            d_server_send(temp_pack, UPACK_SIZE(rowsCount * columnsCount),
+                          addr, NET_REPEAT_SERVER);
+        }
+
+        for (int id = 0; id < maxUnitsCount; id++) {
+            HR_ADDRESS addr;
+            resolve_id(&addr, id);
+
+            char str_health[3];
+            sprintf(str_health, "hp = %d", unitsData[id].health);
+
+            memcpy(temp_pack->data, str_health,
+                          sizeof(char) * 8);
+            temp_pack->type = DP_GAME_INFO;
+            d_server_send(temp_pack, UPACK_SIZE(rowsCount * columnsCount),
+                          addr, NET_REPEAT_SERVER);
+        }
+
+
+        d_all_delay(NET_PING);
+    }
+
+    pthread_exit(0);
+}
+
+void CurrentGame(void* arg) {
     const size_t MAX_STRLEN = 128;
     // Создаём пакет, способный хранить строку длиной 128 char
     UPACK_HEAD* temp_pack = make_UPACK(MAX_STRLEN);
     // Создаём адрес
     HR_ADDRESS temp_addr;
 
-    p_thread commands_thread, stats_thraed;
+    pthread_t commands_in_thread, commands_out_thread;
     int status;
     int curr_users_num = 0;
 
@@ -42,8 +91,8 @@ void CurrentGame() {
             // Проверим, что он действительно хочет подключиться
             if (temp_pack->stamp == DP_S_ASK) {
                 if (curr_users_num != maxUnitsCount + 1) {
-                    if (CheckUniqueIp(temp_addr->ip)) {
-                        AddUser(temp_addr->ip);
+                    if (!check_hr(temp_addr)) {
+                        add_hr(temp_addr, curr_users_num);
                         curr_users_num += 1;
                     }
 
@@ -64,58 +113,67 @@ void CurrentGame() {
             // поток не хочет подключаться
         }
 
-        if (curr_users_num == maxUnitsCounts) {
+        if (curr_users_num == maxUnitsCount) {
             Initialize("./map.txt");
 
-            status = pthread_create(&commands_thread, NULL, ComandsProcessing, NULL);
+            status = pthread_create(&commands_in_thread, NULL, CommandsIn, NULL);
             if (status != 0) {
-                fprintf(sterr, "can't create commands thread");
-                exit(ERROR_CREATE_THREAD);
+                fprintf(stderr, "can't create commands thread");
+                exit(-1);
             }
 
-            status = pthread_create(&stats_thread, NULL, Stats, NULL);
+            status = pthread_create(&commands_out_thread, NULL, CommandsOut, NULL);
             if (status != 0) {
-                fprintf(sterr, "can't create stats thread");
-                exit(ERROR_CREATE_THREAD);
+                fprintf(stderr, "can't create stats thread");
+                exit(-1);
             }
 
-            for (i = 0; i < n; i++) {
+            for (int id = 0; id < maxUnitsCount; id++) {
+                HR_ADDRESS addr;
+                resolve_id(&addr, id);
+
                 temp_pack->type = DP_GAME_PREPARE;
                 d_server_send(temp_pack, UPACK_SIZE(1),
-                              temp_addr, NET_REPEAT_SERVER);
+                              addr, NET_REPEAT_SERVER);
             }
 
             d_all_delay(5.0);
 
-            for (i = 0; i < n; i++) {
+            for (int id = 0; id < maxUnitsCount; id++) {
+                HR_ADDRESS addr;
+                resolve_id(&addr, id);
+
+                char temp = 0;
                 temp_pack->type = DP_GAME_BEGIN;
-                d_server_send(temp_pack, UPACK_SIZE(1),
-                              temp_addr, NET_REPEAT_SERVER);
+                memcpy(temp_pack->data, &temp, 1);
+                d_server_send(temp_pack, UPACK_SIZE(sizeof(int) * 2),
+                              addr, NET_REPEAT_SERVER);
             }
 
-            pthread_join(commands_thread);
-            pthread_join(stats_thread);
+            pthread_join(commands_in_thread, NULL);
+            pthread_join(commands_out_thread, NULL);
 
-            curr_user_num = 0;
+            curr_users_num = 0;
         }
     }
+
+    free(temp_pack);
 }
 
-void ComandsProcessing() {
-    while (isGameActive) {
 
-        d_all_delay(NET_PING);
+void Daemon() {
+    int status;
+    pthread_t game_thread;
+
+    //текущая сессия сервера
+    status = pthread_create(&game_thread, NULL, CurrentGame, NULL);
+    if (status != 0) {
+        fprintf(stderr, "can't create game thread");
+        exit(-1);
     }
 }
 
-void StatsProcessing() {
-
-}
-
-CheckUniqueIP(char* ip_address) {
-
-}
-
-AddNewUser(char* ip_address) {
-
+int main() {
+    Daemon();
+    return 0;
 }
