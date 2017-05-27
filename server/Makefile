@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-c -Wall -lpthread -pthread
+CFLAGS=-c -Wall -lpthread -pthread -std=c99
 LDFLAGS=-lpthread -pthread
 SOURCES=main.c dconnect.c game.c level.c unit.c weapon.c
 OBJECTS=$(SOURCES:.c=.o)

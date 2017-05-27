@@ -89,7 +89,7 @@ void CurrentGame(void* arg) {
     int curr_users_num = 0;
 
     if (d_all_connect(0) < 0) {
-        return -1;
+        exit(-1);
     }
 
     while (true) {
