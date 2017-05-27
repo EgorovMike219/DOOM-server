@@ -10,7 +10,7 @@ const int maxUnitsCount = 1;
 
 const float cellBeginValue = 0.001f;
 const float cellEndValue = 0.999f;
-extern int d;
+
 
 /////////////////////////////////////
 // Logics variables
@@ -142,7 +142,7 @@ void Update() {
     // Update all units
     for( int u = 0; u < unitsCount; u++ ) {
         UpdateUnit(&unitsData[u], deltaTime);
-        record_in_statistics(unitsData[u].id, unitsData[u].health);
+        //record_in_statistics(unitsData[u].id, unitsData[u].health);
     }
 
 

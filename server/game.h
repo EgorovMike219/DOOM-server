@@ -1,4 +1,4 @@
-git //
+//
 // Created by egorov on 15.05.17.
 //
 
