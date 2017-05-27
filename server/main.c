@@ -6,6 +6,16 @@
 #include <stdio.h>
 #include <pthread.h>
 
+void GameUpdate() {
+    while (isGameActive) {
+        Update();
+    }
+
+    Shutdown();
+    pthread_exit(NULL);
+}
+
+
 void CommandsIn(void* arg) {
     HR_ADDRESS temp_addr;
     UPACK_HEAD* temp_pack = make_UPACK(1);
@@ -73,7 +83,8 @@ void CurrentGame(void* arg) {
     // Создаём адрес
     HR_ADDRESS temp_addr;
 
-    pthread_t commands_in_thread, commands_out_thread;
+    pthread_t commands_in_thread, commands_out_thread,
+              game_update_thread;
     int status;
     int curr_users_num = 0;
 
@@ -116,15 +127,21 @@ void CurrentGame(void* arg) {
         if (curr_users_num == maxUnitsCount) {
             Initialize("./map.txt");
 
+            status = pthread_create(&game_update_thread, NULL, GameUpdate, NULL);
+            if (status != 0) {
+                fprintf(stderr, "can't create game update thread");
+                exit(-1);
+            }
+
             status = pthread_create(&commands_in_thread, NULL, CommandsIn, NULL);
             if (status != 0) {
-                fprintf(stderr, "can't create commands thread");
+                fprintf(stderr, "can't create commandsin thread");
                 exit(-1);
             }
 
             status = pthread_create(&commands_out_thread, NULL, CommandsOut, NULL);
             if (status != 0) {
-                fprintf(stderr, "can't create stats thread");
+                fprintf(stderr, "can't create commandsout thread");
                 exit(-1);
             }
 
@@ -152,6 +169,7 @@ void CurrentGame(void* arg) {
 
             pthread_join(commands_in_thread, NULL);
             pthread_join(commands_out_thread, NULL);
+            pthread_join(game_update_thread, NULL);
 
             curr_users_num = 0;
         }
@@ -171,6 +189,8 @@ void Daemon() {
         fprintf(stderr, "can't create game thread");
         exit(-1);
     }
+
+    pthread_join(game_thread, NULL);
 }
 
 int main() {
