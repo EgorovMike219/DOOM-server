@@ -6,7 +6,7 @@
 #include "../statistics/statistics.h"
 
 
-const int maxUnitsCount = 35;
+const int maxUnitsCount = 1;
 
 const float cellBeginValue = 0.001f;
 const float cellEndValue = 0.999f;
@@ -112,7 +112,7 @@ void Update() {
         framesCounter = 0;
     }
 
-    int i;
+    int i, c;
     // Hero control
     for (i = 0; i < unitsCount; ++i) {
         c = unitsData[i].last_command;
