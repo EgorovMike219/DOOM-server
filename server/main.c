@@ -88,6 +88,10 @@ void CurrentGame(void* arg) {
     int status;
     int curr_users_num = 0;
 
+    if (d_all_connect(0) < 0) {
+        return -1;
+    }
+
     while (true) {
         // Пока пакет не получен, пробуем его получить (функция неблокирующая)
         // У сервера эта функция выполняет ровно одно получение пакета
