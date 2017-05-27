@@ -21,6 +21,7 @@ UPACK_HEAD* pack_to_send;
 UPACK_HEAD* pack_to_receive;
 TICK_TYPE tick;
 bool game_is_on;
+int kadr;
 
 
 void ClientStartGame();
