@@ -6,7 +6,7 @@
 //#include "statistics/statistics.h"
 
 
-const int maxUnitsCount = 35;
+const int maxUnitsCount = 1;
 
 const float cellBeginValue = 0.001f;
 const float cellEndValue = 0.999f;
