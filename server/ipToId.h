@@ -1,11 +1,7 @@
-#ifndef DOOM_SERVER_IPTOID_H
-#define DOOM_SERVER_IPTOID_H
-
 #include <string.h>
 #include "dconnect.h"
-#include "game.h"
 
-#define NET_MAX_RESOLVABLE 255
+#define NET_MAX_RESOLVABLE 256
 
 
 
@@ -31,7 +27,7 @@ int IpToId(const char* ip) {
 
 
 
-int initialize_ipToId() {
+void initialize_ipToId() {
 	int i;
 	for (i = 0; i < NET_MAX_RESOLVABLE; i++) {
 		D_IP_ID[i] = -1;
@@ -101,9 +97,8 @@ int remove_id(int id) {
 	}
 	D_IP_ID[IpToId(D_ID_IP[id].ip)] = -1;
 	D_ID_IP[id].port = 0;
+	return 0;
 }
 
 
 
-
-#endif //DOOM_SERVER_IPTOID_H
