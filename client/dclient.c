@@ -9,7 +9,7 @@ void ClientStartGame() {
   game_is_on = true;
   HR_ADDRESS serv_addr;
   serv_addr.port = NET_PORT;
-  printf("What ip-adress you want to connect?\n");
+  printf("Type server IP to connect to: ");
   scanf("%s", serv_addr.ip);
   if (d_all_connect(1) < 0) {
     printf("Server connection fatal error\n");
@@ -23,6 +23,7 @@ void ClientStartGame() {
   start_color();
   nodelay(stdscr, true);
   keypad(stdscr, true);
+  curs_set(0);
   noecho();
 
   printw("connection succsessful");
@@ -32,12 +33,12 @@ void ClientStartGame() {
   pack_to_receive = make_UPACK(sizeof(1));
   d_client_get(pack_to_receive, UPACK_SIZE(1), tick);
 
-  while (pack_to_receive->type != DP_GAME_PREPARE) {
+  while (pack_to_receive->type != DP_GAME_PREPARE && pack_to_receive->type != DP_GAME) {
     d_client_get(pack_to_receive, UPACK_SIZE(1), tick);
   }
 
 
-  while (pack_to_receive->type == DP_GAME_PREPARE) {
+  while (pack_to_receive->type == DP_GAME_PREPARE && pack_to_receive->type != DP_GAME) {
     printw("THE GAME WILL START SOON, PLEASE WAIT...\n");
     refresh();
     move(0, 0);
@@ -45,7 +46,7 @@ void ClientStartGame() {
   }
 
 
-  while (pack_to_receive->type == DP_GAME_BEGIN) {
+  while (pack_to_receive->type == DP_GAME_BEGIN && pack_to_receive->type != DP_GAME) {
     printw("THE GAME STARTS NOW!\n");
     init_pair(1, COLOR_GREEN, COLOR_RED);
     attron(COLOR_PAIR(1));
@@ -56,7 +57,7 @@ void ClientStartGame() {
     d_client_get(pack_to_receive, UPACK_SIZE(1), tick);
   }
 
-
+  kadr = 0;
   pack_to_send = make_UPACK(sizeof(keyboard_key));
   pack_to_receive = make_UPACK(receive_pack_size);
   tick = 1;
@@ -76,6 +77,8 @@ void ClientStartGame() {
 
   return;
 }
+
+//---------------------------------------------------------------------
 
 void* SendData() {
   while (true) {
@@ -125,6 +128,8 @@ void* SendData() {
   return NULL;
 }
 
+//--------------------------------------------------------------------
+
 void* GetData_and_RenderScreen() {
 
   while (true) {
@@ -137,9 +142,13 @@ void* GetData_and_RenderScreen() {
       printf("THE GAME IS OVER\n");
       return NULL;
     }
-
+    if (kadr == 0) {
+      clear();
+    }
     if (pack_to_receive->type == DP_GAME) { //render map
-      tick = pack_to_receive->stamp;
+      if (pack_to_receive->stamp > tick) {
+        tick = pack_to_receive->stamp;
+      }
       int row;
       int column;
       init_pair(1, COLOR_GREEN, COLOR_BLACK);
@@ -155,21 +164,25 @@ void* GetData_and_RenderScreen() {
       move(0, 0);
       refresh();
       attroff(COLOR_PAIR(1));
+      kadr = (kadr + 1) % 30000;
+
     }
 
     if (pack_to_receive->type == DP_GAME_INFO) { //render HP
-      tick = pack_to_receive->stamp;
-      char game_info[10];
-      memcpy(game_info, pack_to_receive->data, 10);
+      if (pack_to_receive->stamp > tick) {
+        tick = pack_to_receive->stamp;
+      }
+      char game_info[64];
+      memcpy(game_info, pack_to_receive->data, 64);
       move(screenRows + 2, screenColumns / 2);
-      init_pair(1, COLOR_RED, COLOR_WHITE);
-      attron(COLOR_PAIR(1));
-      printw("%s", game_info);
+      init_pair(2, COLOR_RED, COLOR_WHITE);
+      attron(COLOR_PAIR(2));
+      printw("   %s   ", game_info);
       refresh();
       move(0, 0);
-      attroff(COLOR_PAIR(1));
+      attroff(COLOR_PAIR(2));
+      kadr = (kadr + 1) % 30000;
     }
   }
   return NULL;
 }
-
