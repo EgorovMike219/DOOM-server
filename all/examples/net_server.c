@@ -26,8 +26,7 @@ int main() {
 		// Если указан другой 'mode', функция уничтожит все неподходящие пакеты
 		if (d_server_get(0,
 				temp_pack, UPACK_SIZE(MAX_STRLEN),
-				&temp_addr)
-				== -2) {
+				&temp_addr) < 0) {
 			continue;
 		}
 		// Печатаем отправителя в обычном IPv4 виде (IP:порт)

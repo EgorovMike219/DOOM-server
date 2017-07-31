@@ -26,16 +26,17 @@ struct Client_Net_data_t {
 
 
 
-// Compare two socket addresses. Return -1, if not equal, otherwise return 0
-int compare_sockaddr_in_(const struct sockaddr_in* a, const socklen_t al,
-		const struct sockaddr_in* b, const socklen_t bl) {
-	if (bl != al) {
+// Compare two HR_ADDRESS. Return 0 if equal, otherwise -1
+int compare_hr(const HR_ADDRESS* a, const HR_ADDRESS* b) {
+	if (a ->port != b ->port) {
 		return -1;
 	}
-	if (memcmp(a, b, al) != 0) {
+	else if (strcmp(a ->ip, b ->ip) != 0) {
 		return -1;
 	}
-	return 0;
+	else {
+		return 0;
+	}
 }
 
 
@@ -140,8 +141,8 @@ void d_all_disconnect() {
 
 
 
-int d_all_sendraw(const void* data, size_t data_length,
-		const struct sockaddr_in* address, size_t address_length,
+int d_all_sendraw(const void *data, size_t data_length,
+		const struct sockaddr_in *address, socklen_t address_length,
 		size_t repeats) {
 	size_t i;
 	size_t failed_sends = 0;
@@ -179,8 +180,11 @@ int d_all_sendraw(const void* data, size_t data_length,
 
 
 int d_all_recvraw(void* data, size_t data_length,
-		const struct sockaddr_in* address, socklen_t* address_length) {
+		struct sockaddr_in* address, socklen_t* address_length) {
 	ssize_t recieved_size;
+	if (address_length != NULL) {
+		*address_length = sizeof(struct sockaddr_in);
+	}
 	if ((recieved_size = recvfrom(D_NET_DATA.socket,
 			data, data_length,
 			MSG_DONTWAIT,
@@ -210,14 +214,12 @@ int d_all_recvraw(void* data, size_t data_length,
 // ========================================================================== //
 
 int d_client_connect(HR_ADDRESS server, int reconnect) {
-	int last_out_code = 0;
 	int recvraw_tryes = 0;
+	int last_out_code = 0;
 
-	UPACK_HEAD pack_T;
-	struct sockaddr_in pack_T_addr;
-	socklen_t pack_T_addl;
+	UPACK_HEAD* pack_T = make_UPACK(1);
 
-
+	
 	if ((reconnect != 1) && (reconnect != 2)) {
 		reconnect = 0;
 	}
@@ -225,65 +227,67 @@ int d_client_connect(HR_ADDRESS server, int reconnect) {
 	if ((reconnect <= 1) &&
 			(transform_from_hr_(&server, &(D_CLIENT_NET_DATA.s_addr)) < 0)) {
 		fprintf(stderr, "Connect failure: Incorrect IP address\n");
+		free(pack_T);
 		return -1;
 	}
 
 
 	if (reconnect == 0) {
-		pack_T.type = DP_CONNECT;
+		pack_T ->type = DP_CONNECT;
 	}
 	else {
-		pack_T.type = DP_RECONNECT;
+		pack_T ->type = DP_RECONNECT;
 	}
-	pack_T.stamp = DP_S_ASK;
+	pack_T ->stamp = DP_S_ASK;
 
 	while (1) {
-		for (recvraw_tryes = 0; recvraw_tryes < NET_REPEAT_TRYES;
+		for (recvraw_tryes = 0; recvraw_tryes < NET_CLIENT_RECVTRYES;
 				recvraw_tryes++) {
-			if (d_all_sendraw(&pack_T, sizeof(pack_T),
-					&(D_CLIENT_NET_DATA.s_addr),
-					sizeof(D_CLIENT_NET_DATA.s_addr),
-					NET_REPEAT_ONE) < 0) {
+			if (d_client_send(pack_T, UPACK_SIZE(1), NET_REPEAT_ONE) < 0) {
 				fprintf(stderr, "Connect failure: Something has gone wrong\n");
+				free(pack_T);
+				d_all_disconnect();
 				return -1;
 			}
-
+			
 			d_all_delay(NET_PING);
-
-			last_out_code = d_all_recvraw(&pack_T, sizeof(pack_T),
-							&pack_T_addr, &pack_T_addl);
+			
+			last_out_code = d_client_get(pack_T, UPACK_SIZE(1), 0);
 
 			if (last_out_code == -1) {
 				fprintf(stderr, "Connect failure: Something has gone wrong\n");
+				free(pack_T);
+				d_all_disconnect();
 				return -1;
 			}
-			else if (last_out_code >= 0) {
+			else if (last_out_code == 0) {
 				break;
 			}
 		}
-		if (last_out_code == -2) {
+		if (recvraw_tryes == NET_CLIENT_RECVTRYES) {
 			fprintf(stderr, "Connect failure: Server not responding\n");
+			free(pack_T);
+			d_all_disconnect();
 			return -1;
 		}
 
-		if (compare_sockaddr_in_(&pack_T_addr, pack_T_addl,
-				&(D_CLIENT_NET_DATA.s_addr),
-				sizeof(D_CLIENT_NET_DATA.s_addr)) != 0) {
-			continue;
-		}
-
-		// Server tested, correct packet recieved
-		if (((pack_T.type == DP_CONNECT) && (reconnect == 0)) ||
-				((pack_T.type == DP_RECONNECT) && (reconnect > 0))) {
-			if (pack_T.stamp == DP_S_SUCCESS) {
+		// Check server response
+		if (((pack_T ->type == DP_CONNECT) && (reconnect == 0)) ||
+				((pack_T ->type == DP_RECONNECT) && (reconnect > 0))) {
+			if (pack_T ->stamp == DP_S_SUCCESS) {
+				free(pack_T);
 				return 0;
 			}
-			else if (pack_T.stamp == DP_S_ERROR) {
+			else if (pack_T ->stamp == DP_S_ERROR) {
 				fprintf(stderr, "Connect failure: Rejected by server\n");
+				free(pack_T);
+				d_all_disconnect();
 				return -1;
 			}
 			else {
 				fprintf(stderr, "Connect failure: Unusual server response\n");
+				free(pack_T);
+				d_all_disconnect();
 				return -1;
 			}
 		}
@@ -295,7 +299,7 @@ int d_client_connect(HR_ADDRESS server, int reconnect) {
 
 int d_client_send(const void* data, size_t data_length, size_t repeats) {
 	return d_all_sendraw(data, data_length,
-			&(D_CLIENT_NET_DATA.s_addr), sizeof(D_CLIENT_NET_DATA.s_addr),
+			&(D_CLIENT_NET_DATA.s_addr), sizeof(struct sockaddr_in),
 			repeats);
 }
 
@@ -303,34 +307,38 @@ int d_client_send(const void* data, size_t data_length, size_t repeats) {
 
 
 int d_client_get(void* data, size_t data_length, TICK_TYPE tick) {
-	const int MAX_RECVRAW_TRYES = 64;
 	int last_out_code = 0;
 	int recvraw_tryes = 0;
 
 	struct sockaddr_in addr_T;
-	socklen_t addl_T;
+	socklen_t addl_T = sizeof(struct sockaddr_in);
 
 	UPACK_HEAD* recieved = data;
-
+	
+	HR_ADDRESS recieved_hr;
+	HR_ADDRESS server_hr;
+	
 
 	if (data == NULL) {
 		fprintf(stderr, "Get failure: NULL pointer\n");
 		return -1;
 	}
+	
+	transform_to_hr_(&D_CLIENT_NET_DATA.s_addr, &server_hr);
 
 	while (1) {
-		for (recvraw_tryes = 0; recvraw_tryes < MAX_RECVRAW_TRYES;
+		for (recvraw_tryes = 0; recvraw_tryes < NET_CLIENT_RECVTRYES;
 				recvraw_tryes++) {
 			last_out_code = d_all_recvraw(data, data_length, &addr_T, &addl_T);
 
-			if (last_out_code == -1) {
-				return -1;
-			}
-			else if (last_out_code == 0) {
+			if (last_out_code >= 0) {
 				break;
 			}
+			else if (last_out_code == -1) {
+				return -1;
+			}
 		}
-		if (last_out_code == -2) {
+		if (recvraw_tryes == NET_CLIENT_RECVTRYES) {
 			return -2;
 		}
 
@@ -339,10 +347,9 @@ int d_client_get(void* data, size_t data_length, TICK_TYPE tick) {
 				continue;
 			}
 		}
-
-		if (compare_sockaddr_in_(&addr_T, addl_T,
-				&(D_CLIENT_NET_DATA.s_addr),
-				sizeof(D_CLIENT_NET_DATA.s_addr)) != 0) {
+		
+		transform_to_hr_(&addr_T, &recieved_hr);
+		if (compare_hr(&server_hr, &recieved_hr) != 0) {
 			continue;
 		}
 
@@ -382,7 +389,7 @@ int d_server_get(int mode, void* data, size_t data_length,
 	int last_out_code = 0;
 
 	struct sockaddr_in cli_addr;
-	socklen_t cli_addl;
+	socklen_t cli_addl = sizeof(struct sockaddr_in);
 
 	UPACK_HEAD* recieved = data;
 

@@ -56,7 +56,7 @@ typedef struct All_Net_packheader_t {
 
 // Return UPACK size to place 'i' chars into data
 // 86 is for x86 architecture
-#define UPACK_SIZE(i) (86 + i)
+#define UPACK_SIZE(i) (86 + (i))
 
 /*
  * Create UPACK_HEAD using malloc, where data will be data[data_size]
@@ -121,8 +121,8 @@ void d_all_disconnect();
  * @return 0 if successful
  * @return -1 for errors
  */
-int d_all_sendraw(const void* data, size_t data_length,
-		const struct sockaddr_in* address, size_t address_length,
+int d_all_sendraw(const void *data, size_t data_length,
+		const struct sockaddr_in *address, socklen_t address_length,
 		size_t repeats);
 
 
@@ -142,7 +142,7 @@ int d_all_sendraw(const void* data, size_t data_length,
  * @note function call never freezes; returns -2 if no data available
  */
 int d_all_recvraw(void* data, size_t data_length,
-		const struct sockaddr_in* address, socklen_t* address_length);
+		struct sockaddr_in* address, socklen_t* address_length);
 
 
 
@@ -198,6 +198,7 @@ int d_client_send(const void* data, size_t data_length, size_t repeats);
  *
  * @return 0 if successful
  * @return -1 for errors
+ * @return -2 if no packet can be recieved at the moment
  */
 int d_client_get(void* data, size_t data_length, TICK_TYPE tick);
 
