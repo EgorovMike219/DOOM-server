@@ -93,10 +93,10 @@ void* make_UPACK (size_t data_size) {
 
 void d_all_delay(float time) {
 	float F_CLOCKS_PER_SEC = (float)CLOCKS_PER_SEC;
-	float clk_start_sec = clock() / F_CLOCKS_PER_SEC;
-	float clk_sec = clock() / F_CLOCKS_PER_SEC;
+	float clk_start_sec = ((float)clock()) / F_CLOCKS_PER_SEC;
+	float clk_sec = ((float)clock()) / F_CLOCKS_PER_SEC;
 	while (clk_sec < clk_start_sec + time) {
-		clk_sec = clock() / F_CLOCKS_PER_SEC;
+		clk_sec = ((float)clock()) / F_CLOCKS_PER_SEC;
 	}
 }
 

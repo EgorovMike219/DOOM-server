@@ -1,5 +1,5 @@
-#ifndef DCONNECT_SETTINGS_H_
-#define DCONNECT_SETTINGS_H_
+#ifndef DCONNECT_SETTINGS
+#define DCONNECT_SETTINGS
 
 // ========================================================================== //
 // NETWORK TYPES AND CONSTANTS
@@ -17,6 +17,8 @@
 
 #define DP_CLIENT_ACTION 20
 #define DP_CLIENT_STOP 21
+
+#define DP_MESSAGE 31
 
 
 
@@ -55,4 +57,4 @@
 
 
 
-#endif /* DCONNECT_SETTINGS_H_ */
+#endif /* DCONNECT_SETTINGS */

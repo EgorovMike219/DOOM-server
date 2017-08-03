@@ -16,7 +16,7 @@
 
 #include "dconnect_settings.h"
 
-// TODO: Remove from this file (not only network-related)
+// TODO: Remove from this file
 #define TICK_TYPE uint64_t
 
 
