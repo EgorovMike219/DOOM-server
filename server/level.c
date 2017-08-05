@@ -6,39 +6,33 @@
 #include <stdlib.h>
 
 
-const unsigned char CellSymbol_Empty = ' ';
-const unsigned char CellSymbol_Wall = '#';
-const unsigned char CellSymbol_Hero = 'h';
-const unsigned char CellSymbol_Heart = '+';
-const unsigned char CellSymbol_Poison = '-';
-const unsigned char CellSymbol_Bomb = '*';
 
 unsigned char GetRenderCellSymbol(unsigned char cellSymbol)
 {
-    if (cellSymbol == CellSymbol_Empty) return  ' ';
-    if (cellSymbol == CellSymbol_Wall) return  '#';
-    if (cellSymbol == CellSymbol_Hero) return  'h';
-    if (cellSymbol == CellSymbol_Heart) return  '+';
-    if (cellSymbol == CellSymbol_Poison) return  '+';
-    if (cellSymbol == CellSymbol_Bomb) return  'b';
+    if (cellSymbol == CELL_EMPTY) return  ' ';
+    if (cellSymbol == CELL_WALL) return  '#';
+    if (cellSymbol == CELL_PLAYER) return  'h';
+    if (cellSymbol == CELL_HEART) return  '+';
+    if (cellSymbol == CELL_POISON) return  '+';
+    if (cellSymbol == CELL_BOMB) return  'b';
 
     return '?';
 }
 
 ConsoleColor GetRenderCellSymbolColor(unsigned char cellSymbol) {
-    if (cellSymbol == CellSymbol_Empty) return ConsoleColor_Black;
-    if (cellSymbol == CellSymbol_Wall) return ConsoleColor_White;
-    if (cellSymbol == CellSymbol_Hero) return ConsoleColor_Yellow;
-    if (cellSymbol == CellSymbol_Heart) return ConsoleColor_Red;
+    if (cellSymbol == CELL_EMPTY) return ConsoleColor_Black;
+    if (cellSymbol == CELL_WALL) return ConsoleColor_White;
+    if (cellSymbol == CELL_PLAYER) return ConsoleColor_Yellow;
+    if (cellSymbol == CELL_HEART) return ConsoleColor_Red;
 
     return ConsoleColor_Gray;
 }
 
 
 ConsoleColor GetRenderCellSymbolBackgroundColor(unsigned char cellSymbol) {
-    if (cellSymbol == CellSymbol_Wall) return ConsoleColor_White;
-    if (cellSymbol == CellSymbol_Hero) return ConsoleColor_Gray;
-    if (cellSymbol == CellSymbol_Heart) return ConsoleColor_Gray;
+    if (cellSymbol == CELL_WALL) return ConsoleColor_White;
+    if (cellSymbol == CELL_PLAYER) return ConsoleColor_Gray;
+    if (cellSymbol == CELL_HEART) return ConsoleColor_Gray;
 
     return ConsoleColor_Black;
 }

@@ -14,10 +14,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "gamekey.h"
 #include "dconnect_settings.h"
-
-// TODO: Remove from this file
-#define TICK_TYPE uint64_t
 
 
 

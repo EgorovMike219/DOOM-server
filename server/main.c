@@ -2,9 +2,9 @@
 #include <stdio.h>
 #include <pthread.h>
 
-#include "game.h"
 #include "../all/dconnect.h"
-#include "ipToId.h"
+
+#include "game.h"
 #include "level.h"
 
 

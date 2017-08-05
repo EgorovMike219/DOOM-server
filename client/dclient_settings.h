@@ -27,16 +27,4 @@
 
 
 
-// TODO: Remove from this file
-#define CMD_W 'w'
-#define CMD_A 'a'
-#define CMD_S 's'
-#define CMD_D 'd'
-#define CMD_BOMB 'b'
-#define CMD_QUIT 'q'
-#define CMD_NONE ' '
-
-
-
-
 #endif //DCLIENT_SETTINGS_H

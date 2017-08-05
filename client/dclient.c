@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 #include "../all/dconnect.h"
+#include "../all/gamekey.h"
 
 #include "dclient_settings.h"
 
@@ -57,14 +58,23 @@ void curses_define_screen_size(void) {
  */
 chtype convert_symbol(char sym) {
 	switch (sym) {
-		case '#':
+		case CELL_EMPTY:
+			return (chtype)' ';
+		case CELL_WALL:
 			return (chtype)'#';
-		case 'p':
+		
+		case CELL_PLAYER:
 			return (chtype)'@';
-		case 'e':
+		case CELL_ENEMY:
 			return (chtype)'$';
-		case 'h':
+		
+		case CELL_HEART:
 			return (chtype)'+';
+		case CELL_POISON:
+			return (chtype)'+';
+		case CELL_BOMB:
+			return (chtype)'*';
+		
 		default:
 			return (chtype)sym;
 	}

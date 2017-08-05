@@ -16,9 +16,9 @@ find_package (Threads REQUIRED)
 set(SERVER_SOURCE_FILES
 	./all/dconnect.c
 	./all/dconnect_settings.h
+	./all/gamekey.h
 
 	./server/game.c
-	./server/ipToId.c
 	./server/level.c
 	./server/unit.c
 	./server/weapon.c
@@ -33,6 +33,7 @@ target_link_libraries(server pthread)
 set(TSERVER_SOURCE_FILES
 	./all/dconnect_settings.h
 	./all/dconnect.c
+	./all/gamekey.h
 	
 	./all/net_server.c
 	)
@@ -42,6 +43,7 @@ add_executable(tserver ${TSERVER_SOURCE_FILES})
 set(CLIENT_SOURCE_FILES
 	./all/dconnect.c
 	./all/dconnect_settings.h
+	./all/gamekey.h
 
 	./client/dclient.c
 	./client/dclient_settings.h

@@ -37,7 +37,7 @@ int GetWeaponRangeOfCharge(WeaponType weaponType) {
 
 WeaponType GetWeaponTypeFromCell(unsigned char cellSymbol)
 {
-    if (cellSymbol == CellSymbol_Bomb) return WeaponType_Bomb;  // по идее это оружие есть всегда и оно активируется на какую-нибудь кнопку
+    if (cellSymbol == CELL_BOMB) return WeaponType_Bomb;  // по идее это оружие есть всегда и оно активируется на какую-нибудь кнопку
 
     return WeaponType_None;
 }

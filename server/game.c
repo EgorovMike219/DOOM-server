@@ -30,8 +30,8 @@ bool InsertUnitOnMap(int *r, int *c) {
 			c1 = *c + j;
 			if (((r1 >= 0) && (r1 < rowsCount)) &&
 				((c1 >= 0) && (c1 < columnsCount))) {
-				if (levelData[r1][c1] == CellSymbol_Empty) {
-					levelData[r1][c1] = CellSymbol_Hero;
+				if (levelData[r1][c1] == CELL_EMPTY) {
+					levelData[r1][c1] = CELL_PLAYER;
 					*r = r1;
 					*c = c1;
 					return true;
@@ -176,11 +176,11 @@ bool MoveUnitTo(UnitData *pointerToUnitData, float newX, float newY) {
 	// All units actions
 	
 	// Empty cell
-	if (destinationCellSymbol == CellSymbol_Empty) {
+	if (destinationCellSymbol == CELL_EMPTY) {
 		canMoveToCell = true;
 	}
 	// Units cells
-	if (destinationCellSymbol == CellSymbol_Hero) {
+	if (destinationCellSymbol == CELL_PLAYER) {
 		UnitType destinationUnitType = GetUnitTypeFromCell(
 				destinationCellSymbol);
 		
@@ -204,7 +204,7 @@ bool MoveUnitTo(UnitData *pointerToUnitData, float newX, float newY) {
 				
 				// If enemy unit die
 				if (unitsData[u].health <= 0) {
-					levelData[row][column] = CellSymbol_Empty;
+					levelData[row][column] = CELL_EMPTY;
 					liveUnitsCount--;
 				}
 				
@@ -216,12 +216,12 @@ bool MoveUnitTo(UnitData *pointerToUnitData, float newX, float newY) {
 	// Only hero actions
 	if (pointerToUnitData->type == UnitType_Hero) {
 		// Heart
-		if (destinationCellSymbol == CellSymbol_Heart) {
+		if (destinationCellSymbol == CELL_HEART) {
 			canMoveToCell = true;
 			pointerToUnitData->health += heartHeal;
 		}
 		// Poison
-		if (destinationCellSymbol == CellSymbol_Poison) {
+		if (destinationCellSymbol == CELL_POISON) {
 			canMoveToCell = true;
 			pointerToUnitData->health -= poisoningEffect;
 			if (pointerToUnitData->health <= 0) {
@@ -232,7 +232,7 @@ bool MoveUnitTo(UnitData *pointerToUnitData, float newX, float newY) {
 	
 	if (canMoveToCell) {
 		// Remove unit symbol from previous position
-		levelData[oldRow][oldColumn] = CellSymbol_Empty;
+		levelData[oldRow][oldColumn] = CELL_EMPTY;
 		
 		// Set new hero position
 		pointerToUnitData->x = newX;

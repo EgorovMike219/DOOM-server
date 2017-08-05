@@ -5,7 +5,10 @@
 #ifndef LEVEL_H
 #define LEVEL_H
 
+#include "../all/gamekey.h"
+
 #include "consoleColor.h"
+
 
 
 int reductionHealth;
@@ -16,14 +19,6 @@ int range_of_damage;
 int damage;
 int heartHeal;
 int poisoningEffect;
-
-
-extern const unsigned char CellSymbol_Empty;
-extern const unsigned char CellSymbol_Wall;
-extern const unsigned char CellSymbol_Hero;
-extern const unsigned char CellSymbol_Heart;
-extern const unsigned char CellSymbol_Poison;
-extern const unsigned char CellSymbol_Bomb;
 
 
 char **levelData0;

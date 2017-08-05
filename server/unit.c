@@ -53,7 +53,7 @@ int GetUnitDefaultHealth(UnitType unitType) {
 
 UnitType GetUnitTypeFromCell(unsigned char cellSymbol)
 {
-    if (cellSymbol == CellSymbol_Hero) {
+    if (cellSymbol == CELL_PLAYER) {
         return UnitType_Hero;
     }
 
