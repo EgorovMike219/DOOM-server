@@ -12,6 +12,7 @@ int main() {
 	const size_t MAX_STRLEN = 128;
 	// Создаём пакет, способный хранить строку длиной 128 char
 	UPACK_HEAD* temp_pack = make_UPACK(MAX_STRLEN);
+	UPACK_HEAD* temp_recv = make_UPACK(1);
 	// Создаём адрес
 	HR_ADDRESS temp_addr;
 	
@@ -49,7 +50,7 @@ int main() {
 						temp_pack, UPACK_SIZE(MAX_STRLEN),
 						&temp_addr) >= 0) {}
 	
-	d_all_delay(30.000);
+	d_all_delay(15.000);
 	
 	temp_pack ->type = DP_GAME_PREPARE;
 	temp_pack ->stamp = 0;
@@ -57,7 +58,7 @@ int main() {
 		   d_server_send(temp_pack, UPACK_SIZE(1),
 						 temp_addr, NET_REPEAT_SERVER));
 	
-	d_all_delay(15.000);
+	d_all_delay(5.000);
 	
 	temp_pack ->type = DP_GAME_BEGIN;
 	temp_pack ->stamp = 0;
@@ -65,7 +66,7 @@ int main() {
 		   d_server_send(temp_pack, UPACK_SIZE(1),
 						 temp_addr, NET_REPEAT_SERVER));
 	
-	for (int i=0; i<100; i++) {
+	for (int i = 0; i < 100; i++) {
 		temp_pack ->data[i] = (char)('0' + i % 10);
 	}
 	temp_pack ->data[100] = '\0';
@@ -74,16 +75,36 @@ int main() {
 	while (tick < 1000000) {
 		temp_pack ->stamp = tick;
 		printf("Send game data(0)? %d\n\n",
-			   d_server_send(temp_pack, UPACK_SIZE(1),
+			   d_server_send(temp_pack, UPACK_SIZE(MAX_STRLEN),
 							 temp_addr, NET_REPEAT_SERVER));
 		tick += 1;
-		d_all_delay(0.500);
+
+		for (int i = 0; i < 16; i++) {
+			if (d_server_get(0, temp_recv, UPACK_SIZE(1), &temp_addr) < 0) {
+				continue;
+			}
+			
+			if (temp_recv ->type == DP_CLIENT_STOP) {
+				temp_pack ->type = DP_CLIENT_STOP;
+				temp_pack ->stamp = tick + 64;
+				printf("STOP? %d\n\n",
+					   d_server_send(temp_pack, UPACK_SIZE(MAX_STRLEN),
+									 temp_addr, NET_REPEAT_SERVER));
+				tick = 1000000;
+			}
+			
+			printf("Type and Stamp: %ld | %lld\n",
+				   (long)temp_recv ->type, (long long)temp_recv ->stamp);
+			printf("Cmd: %c\n\n",
+				   temp_recv ->data[0]);
+			break;
+		}
+		
+		d_all_delay(0.100);
 	}
 	
-	
-
-	// Эти строки никогда не выполнятся, цикл бесконечный
 	free(temp_pack);
+	free(temp_recv);
 	return 0;
 }
 

@@ -1,3 +1,5 @@
+#define _GNU_SOURCE  // Non-standart function pthread_yield used
+
 #include <ncurses.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -9,34 +11,37 @@
 
 
 
-
-// ========================================================================== //
-// GLOBAL CLIENT VARIABLES
-// ========================================================================== //
-
-/// Curses variables
+/// Curses client variable
 int screen_width;
+/// Curses client variable
 int screen_height;
+/// Curses client variable
 int screen_width_middle;
+/// Curses client variable
 int screen_height_middle;
+
 
 /// Current tick
 TICK_TYPE tick;
 
-/// Last actual packet received from server
-UPACK_HEAD* pack_to_receive;
-
-/// PID of receive_game_info thread
+/// receive_game_info thread
 pthread_t receiver_id;
 
 
 
+
+/**
+ * @brief Print string in the middle of a line
+ */
 void curses_printw_in_middle(int line, char *string) {
 	mvprintw(line, (screen_width / 2) - ((int)strlen(string) / 2),
 			 "%s", string);
 }
 
 
+/**
+ * @brief Define screen size and update 'curses' client variables
+ */
 void curses_define_screen_size(void) {
 	screen_width = getmaxx(stdscr);
 	screen_height = getmaxy(stdscr);
@@ -47,10 +52,34 @@ void curses_define_screen_size(void) {
 
 
 
-void display_game(void) {
-	static uint64_t last_update = 1;
-	if (tick - last_update >= CLIENT_REDRAW_TICK_INTERVAL) {
+/**
+ * @brief Change symbol to show it on player screen
+ */
+chtype convert_symbol(char sym) {
+	switch (sym) {
+		case '#':
+			return (chtype)'#';
+		case 'p':
+			return (chtype)'@';
+		case 'e':
+			return (chtype)'$';
+		case 'h':
+			return (chtype)'+';
+		default:
+			return (chtype)sym;
+	}
+}
+
+
+/**
+ * @brief Draw game field, player data and additional graphics
+ */
+void display_game(UPACK_HEAD* pack_to_receive) {
+	if (tick % CLIENT_REDRAW_TICK_MODULE == 0) {
+		curses_define_screen_size();
+		bkgd(COLOR_PAIR(DISPLAY_BACKGROUND));
 		clear();
+		refresh();
 	}
 	
 	int height_start = screen_height_middle + 1
@@ -68,75 +97,81 @@ void display_game(void) {
 	int x;
 	int y;
 	
+	
 	// Draw borders
-	init_pair(1, COLOR_WHITE, COLOR_WHITE);
-	attron(COLOR_PAIR(1));
+	attron(COLOR_PAIR(DISPLAY_ID_BORDER));
 	move(height_field_start - CLIENT_FIELD_BORDER,
 		 width_field_start - CLIENT_FIELD_BORDER);
 	for (x = 0; x < CLIENT_FIELD_WIDTH + 2; x++) {
 		addch((chtype)' ');
 	}
-	for (y = 1; y < CLIENT_FIELD_HEIGHT; y++) {
+	for (y = 1; y < CLIENT_FIELD_HEIGHT + 1; y++) {
 		move(height_field_start + y - CLIENT_FIELD_BORDER,
 			 width_field_start - CLIENT_FIELD_BORDER);
 		addch((chtype)' ');
 		move(height_field_start + y - CLIENT_FIELD_BORDER,
 			 width_field_start + CLIENT_FIELD_WIDTH + CLIENT_FIELD_BORDER - 1);
+		addch((chtype)' ');
 	}
 	move(height_field_start + CLIENT_FIELD_HEIGHT + CLIENT_FIELD_BORDER - 1,
 		 width_field_start - CLIENT_FIELD_BORDER);
 	for (x = 0; x < CLIENT_FIELD_WIDTH + 2; x++) {
 		addch((chtype)' ');
 	}
-	attroff(COLOR_PAIR(1));
+	attroff(COLOR_PAIR(DISPLAY_ID_BORDER));
 	
 	// Draw field
-	init_pair(1, COLOR_RED, COLOR_BLACK);
-	attron(COLOR_PAIR(1));
-	for (x = 0, y = 0; x < CLIENT_FIELD_WIDTH; x++) {
+	attron(COLOR_PAIR(DISPLAY_ID_FIELD));
+	for (y = 0; y < CLIENT_FIELD_HEIGHT; y++) {
 		move(height_field_start + y, width_field_start);
-		for (; y < CLIENT_FIELD_HEIGHT; y++) {
-			addch((chtype)pack_to_receive ->data[x + y * CLIENT_FIELD_WIDTH]);
+		for (x = 0; x < CLIENT_FIELD_WIDTH; x++) {
+			addch(convert_symbol(
+					pack_to_receive ->data[x + y * CLIENT_FIELD_WIDTH]));
 		}
 	}
-	attroff(COLOR_PAIR(1));
+	attroff(COLOR_PAIR(DISPLAY_ID_FIELD));
 	
+	/*
 	// Draw game info
-	init_pair(1, COLOR_WHITE, COLOR_BLACK);
-	attron(COLOR_PAIR(1));
+	attron(COLOR_PAIR(DISPLAY_ID_INFO));
 	// TODO: Print game info
-	attroff(COLOR_PAIR(1));
+	attroff(COLOR_PAIR(DISPLAY_ID_INFO));
+	*/
 	
 	refresh();
 }
 
 
+/**
+ * @brief Thread function. Receives all available data from server
+ * and calls display_game() each time new DP_GAME packet is received
+ */
 void* receive_display_game(void *dummy) {
+	UPACK_HEAD* pack_to_receive = make_UPACK(UDP_MAX_PACKET_SIZE);
 	short keep_receiving = 1;
+	
 	while (keep_receiving) {
 		if (d_client_get(pack_to_receive, UPACK_SIZE(UDP_MAX_PACKET_SIZE),
 						 tick) < 0) {
+			pthread_yield();
 			continue;
 		}
-		curses_printw_in_middle(screen_height_middle, "SOMETHING HERE");
-		d_all_delay(1.000);
-		refresh();
 		switch(pack_to_receive ->type) {
 			case DP_GAME:
-				curses_printw_in_middle(screen_height_middle, "=====GAME=====");
-				refresh();
-				d_all_delay(1.000);
 				tick = pack_to_receive ->stamp + 1;
-				display_game();
+				display_game(pack_to_receive);
+				pthread_yield();
 				break;
 			case DP_CLIENT_STOP:
 				keep_receiving = 0;
+				pthread_yield();
 				break;
 			default:
-				d_all_delay(0.001);
+				continue;
 		}
 	}
 	
+	free(pack_to_receive);
 	pthread_exit(NULL);
 }
 
@@ -149,8 +184,23 @@ int main() {
 		fprintf(stderr, "Unable to initialize graphics (ncurses)\n");
 		return -1;
 	}
-	nocbreak();
-	curses_define_screen_size();
+	
+	// Prepare screen
+	{
+		nocbreak();
+		start_color();
+		curses_define_screen_size();
+		
+		init_pair(DISPLAY_BACKGROUND, COLOR_WHITE, COLOR_BLACK);
+		init_pair(DISPLAY_ID_BORDER, COLOR_YELLOW, COLOR_YELLOW);
+		init_pair(DISPLAY_ID_FIELD, COLOR_WHITE, COLOR_BLACK);
+		init_pair(DISPLAY_ID_INFO, COLOR_BLACK, COLOR_YELLOW);
+		init_pair(DISPLAY_ID_HEALTH, COLOR_RED, COLOR_WHITE);
+		
+		bkgd(COLOR_PAIR(DISPLAY_BACKGROUND));
+		clear();
+		refresh();
+	}
 	
 	// Connect to server
 	{
@@ -170,7 +220,7 @@ int main() {
 		curses_printw_in_middle(screen_height_middle - 1,
 								"Welcome to DOOM-592!");
 		curses_printw_in_middle(screen_height_middle,
-								"Server IP: ");
+								"\b\b\bServer IP: ");
 		refresh();
 		scanw("%s", server.ip);
 		clear();
@@ -201,11 +251,12 @@ int main() {
 		}
 	}
 	
-	// Connection successful. Allocate memory to get server response normally
-	pack_to_receive = make_UPACK(UDP_MAX_PACKET_SIZE);
-	
 	// Wait before the game and start
 	{
+		UPACK_HEAD* pack_to_receive = make_UPACK(UDP_MAX_PACKET_SIZE);
+		
+		curs_set(0);
+		
 		curses_printw_in_middle(screen_height_middle,
 								"Please wait for other players.");
 		curses_printw_in_middle(screen_height_middle + 1,
@@ -246,33 +297,40 @@ int main() {
 		
 		// Game initialization
 		cbreak();
-		start_color();
 		nodelay(stdscr, true);
 		keypad(stdscr, true);
-		curs_set(0);
 		noecho();
 		
 		tick = 1;
 		
 		// Create thread to receive data from server
-		if (!pthread_create(&receiver_id, NULL, &receive_display_game, NULL)) {
+		if (pthread_create(&receiver_id, NULL, &receive_display_game, NULL) != 0) {
 			curses_printw_in_middle(screen_height_middle,
 									"Thread create error");
+			refresh();
 			d_all_delay(2.500);
 			endwin();
 			return -1;
 		}
+		
+		free(pack_to_receive);
 	}
 	
 	// Client listening
 	UPACK_HEAD* pack_to_send = make_UPACK(1);
 	int client_input;
 	char client_command;
+	int failed_key;
 	
 	while (1) {
-		client_input = wgetch(stdscr);
-		
-		if (client_input == ERR) {
+		for (failed_key = 0; failed_key < CLIENT_KEYTRYES; failed_key++) {
+			client_input = wgetch(stdscr);
+			if (client_input != ERR) {
+				break;
+			}
+		}
+		if (failed_key == CLIENT_KEYTRYES) {
+			pthread_yield();
 			continue;
 		}
 		
@@ -329,16 +387,28 @@ int main() {
 		if (pack_to_send ->type == DP_CLIENT_STOP) {
 			break;
 		}
+		
+		pthread_yield();
 	}
+	
 	free(pack_to_send);
 	
 	// Join receiver
 	pthread_join(receiver_id, NULL);
-	free(pack_to_receive);
 	
 	// End game
+	nocbreak();
+	nodelay(stdscr, false);
+	keypad(stdscr, false);
+	echo();
+	
+	
+	
+	clear();
+	refresh();
 	curses_printw_in_middle(screen_height_middle,
 							"Game ended. Thanks for playing!");
+	refresh();
 	d_all_delay(10.000);
 	endwin();
 	return 0;
