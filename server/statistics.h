@@ -1,5 +1,5 @@
-#ifndef STATISTICS_H_INCLUDED
-#define STATISTICS_H_INCLUDED
+#ifndef STATISTICS_H
+#define STATISTICS_H
 
 //Функция возвращает ответ со статистикой для игрока с данным id
 void answer_from_statistics(int id);
@@ -8,4 +8,4 @@ void answer_from_statistics(int id);
 // его id и здоровье (для сбора статистики)
 void record_in_statistics(int id, int health);
 
-#endif // STATISTICS_H_INCLUDED
+#endif // STATISTICS_H

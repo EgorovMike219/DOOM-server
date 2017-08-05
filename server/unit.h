@@ -2,8 +2,8 @@
 // Created by egorov on 30.04.17.
 //
 
-#ifndef DOOM_SERVER_UNITTYPE_H
-#define DOOM_SERVER_UNITTYPE_H
+#ifndef UNIT_H
+#define UNIT_H
 
 #include "level.h"
 #include "weapon.h"
@@ -56,4 +56,4 @@ UnitType GetUnitTypeFromCell(unsigned char cellSymbol);
 
 int GetUnitDefaultCountOfCharge();
 
-#endif //DOOM_SERVER_UNITTYPE_H
+#endif //UNIT_H

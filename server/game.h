@@ -2,8 +2,8 @@
 // Created by egorov on 15.05.17.
 //
 
-#ifndef DOOM_SERVER_GAME_H
-#define DOOM_SERVER_GAME_H
+#ifndef GAME_H
+#define GAME_H
 
 #include "unit.h"
 #include <time.h>
@@ -38,4 +38,4 @@ void Update();
 void Shutdown();
 
 
-#endif //DOOM_SERVER_GAME_H
+#endif //GAME_H

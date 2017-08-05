@@ -365,8 +365,8 @@ void UpdateUnit(UnitData *pointerToUnitData, float deltaTime) {
 	} else {
 		pointerToUnitData->x = newX;
 	}
-	pointerToUnitData->order_x = 0;
-	pointerToUnitData->order_y = 0;
+	pointerToUnitData->order_x = UnitOrder_None;
+	pointerToUnitData->order_y = UnitOrder_None;
 	pointerToUnitData->speed_x = 0;
 	pointerToUnitData->speed_y = 0;
 }

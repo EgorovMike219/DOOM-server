@@ -1,5 +1,5 @@
-#ifndef DCLIENT_SETTINGS
-#define DCLIENT_SETTINGS
+#ifndef DCLIENT_SETTINGS_H
+#define DCLIENT_SETTINGS_H
 
 
 
@@ -39,4 +39,4 @@
 
 
 
-#endif //DCLIENT_SETTINGS
+#endif //DCLIENT_SETTINGS_H

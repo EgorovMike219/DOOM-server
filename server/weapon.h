@@ -2,8 +2,8 @@
 // Created by egorov on 30.04.17.
 //
 
-#ifndef DOOM_SERVER_WEAPONDATA_H
-#define DOOM_SERVER_WEAPONDATA_H
+#ifndef WEAPON_H
+#define WEAPON_H
 
 #include <stdbool.h>
 #include "level.h"
@@ -28,4 +28,4 @@ int GetWeaponRangeOfCharge(WeaponType weaponType);
 
 WeaponType GetWeaponTypeFromCell(unsigned char cellSymbol);
 
-#endif //DOOM_SERVER_WEAPONDATA_H
+#endif //WEAPON_H

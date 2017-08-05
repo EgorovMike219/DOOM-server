@@ -1,5 +1,5 @@
-#ifndef DCONNECT_INCLUDED
-#define DCONNECT_INCLUDED
+#ifndef DCONNECT_H
+#define DCONNECT_H
 
 #include <arpa/inet.h>
 #include <errno.h>
@@ -30,7 +30,7 @@
 // CUSTOM NETWORK TYPES
 // ========================================================================== //
 
-/*
+/**
  * Human-readable client address
  *
  * @note 'port' is stored in local byte order
@@ -41,7 +41,7 @@ typedef struct All_Net_clientaddr_t {
 } HR_ADDRESS;
 
 
-/*
+/**
  * Universal packet header
  *
  * @var type: packet type and operation it performs. Use predefined constants!
@@ -54,11 +54,10 @@ typedef struct All_Net_packheader_t {
 	char data[1];
 } UPACK_HEAD;
 
-// Return UPACK size to place 'i' chars into data
-// 86 is for x86 architecture
+/// Return UPACK size to place 'i' chars into data
 #define UPACK_SIZE(i) (86 + (i))
 
-/*
+/**
  * Create UPACK_HEAD using malloc, where data will be data[data_size]
  *
  * @param data_size
@@ -78,7 +77,7 @@ void* make_UPACK(size_t data_size);
 // COMMON NETWORK FUNCTIONS
 // ========================================================================== //
 
-/*
+/**
  * Delay execution
  *
  * @param time: Time (in seconds) to delay execution for
@@ -86,7 +85,7 @@ void* make_UPACK(size_t data_size);
 void d_all_delay(float time);
 
 
-/*
+/**
  * Create an UDP socket and bind it.
  *
  * @param type: Type of connection required
@@ -102,13 +101,13 @@ void d_all_delay(float time);
 int d_all_connect(int type);
 
 
-/*
+/**
  * Safely close a connection. Can be reopened using d_all_connect
  */
 void d_all_disconnect();
 
 
-/*
+/**
  * Send raw data using UDP protocol
  * Wrapper for <socket.h>::sendto()
  *
@@ -126,7 +125,7 @@ int d_all_sendraw(const void *data, size_t data_length,
 		size_t repeats);
 
 
-/*
+/**
  * Recieve raw data using UDP protocol
  * Wrapper for <socket.h>::recvfrom()
  *
@@ -155,7 +154,7 @@ int d_all_recvraw(void* data, size_t data_length,
 // CLIENT NETWORK FUNCTIONS
 // ========================================================================== //
 
-/*
+/**
  * CLIENT: Send "hello" datagram to server
  *
  * @param server: Info of server to be connected to
@@ -172,7 +171,7 @@ int d_all_recvraw(void* data, size_t data_length,
 int d_client_connect(HR_ADDRESS server, int reconnect);
 
 
-/*
+/**
  * CLIENT: Send datagram to server
  *
  * @param data: Data to send
@@ -187,7 +186,7 @@ int d_client_connect(HR_ADDRESS server, int reconnect);
 int d_client_send(const void* data, size_t data_length, size_t repeats);
 
 
-/*
+/**
  * CLIENT: Recieve [time-signed] datagram
  *
  * @param data: Place for data to be put to
@@ -213,7 +212,7 @@ int d_client_get(void* data, size_t data_length, TICK_TYPE tick);
 // SERVER NETWORK FUNCTIONS
 // ========================================================================== //
 
-/*
+/**
  * SERVER: Send a datagram
  *
  * @param data: Data to send
@@ -228,7 +227,7 @@ int d_server_send(const void* data, size_t data_length,
 		HR_ADDRESS destination, size_t repeats);
 
 
-/*
+/**
  * SERVER: Recieve a datagram
  *
  * @param mode:
@@ -259,4 +258,4 @@ int d_server_get(int mode, void* data, size_t data_length,
 
 
 
-#endif /* DCONNECT_INCLUDED */
+#endif //DCONNECT_H

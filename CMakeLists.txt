@@ -1,8 +1,7 @@
 cmake_minimum_required(VERSION 3.8)
-project(DOOM)
+project(DOOM-592)
 
 set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_FLAGS -pthread)
 
 
 

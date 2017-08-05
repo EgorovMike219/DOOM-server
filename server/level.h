@@ -2,8 +2,8 @@
 // Created by egorov on 30.04.17.
 //
 
-#ifndef DOOM_SERVER_LEVEL_H
-#define DOOM_SERVER_LEVEL_H
+#ifndef LEVEL_H
+#define LEVEL_H
 
 #include "consoleColor.h"
 
@@ -41,4 +41,4 @@ void read_from_file(char* pathname);
 
 
 
-#endif //DOOM_SERVER_LEVEL_H
+#endif //LEVEL_H

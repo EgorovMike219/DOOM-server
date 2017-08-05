@@ -1,5 +1,5 @@
-#ifndef DCONNECT_SETTINGS
-#define DCONNECT_SETTINGS
+#ifndef DCONNECT_SETTINGS_H
+#define DCONNECT_SETTINGS_H
 
 // ========================================================================== //
 // NETWORK TYPES AND CONSTANTS
@@ -57,4 +57,4 @@
 
 
 
-#endif /* DCONNECT_SETTINGS */
+#endif //DCONNECT_SETTINGS_H
