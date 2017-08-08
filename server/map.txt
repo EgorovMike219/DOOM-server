@@ -1,11 +1,11 @@
-reductionHealth = 5
-reductionHealthWhileStand = 2
-heartHeal = 150
-poisoningEffect = 150
-range_of_damage = 3
-damage = 200
-rowsCount = 15
-columnsCount = 35
+level_active_health_reduction = 5
+level_passive_health_reduction = 2
+DWEAPON_heal_damage = 150
+DWEAPON_poison_damage = 150
+DWEAPON_bomb_range = 3
+DWEAPON_bomb_damage = 200
+level_height = 15
+level_width = 35
 ###################################
 #   #+##           +              #
 # #    # ############## ######### #

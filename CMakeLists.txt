@@ -17,13 +17,11 @@ set(SERVER_SOURCE_FILES
 	./all/dconnect.c
 	./all/dconnect_settings.h
 	./all/gamekey.h
-
-	./server/game.c
-	./server/level.c
-	./server/unit.c
-	./server/weapon.c
-	./server/statistics.c
-	./server/main.c
+	
+	server/dgame.c
+	server/dstatistics.c
+	server/dserver.c
+	server/dgame_settings.h
 	)
 add_executable(server ${SERVER_SOURCE_FILES})
 target_link_libraries(server ${CURSES_LIBRARIES})

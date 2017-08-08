@@ -5,7 +5,14 @@
 // SETTINGS
 // ========================================================================== //
 
+#include <stdint.h>  // Required for TICK_TYPE
 
+
+/// Maximum length of all names in the game
+#define NAME_LENGTH 64
+
+/// Maximum allowed number of players in the game
+#define PLAYERS_MAX 8
 
 
 
@@ -14,16 +21,16 @@
 // CONSTANTS
 // ========================================================================== //
 
-// Cell types //
-#define CELL_EMPTY ' '
-#define CELL_WALL '#'
+// Entity codes //
+#define ENTITY_EMPTY ' '
+#define ENTITY_WALL '#'
 
-#define CELL_PLAYER 'p'
-#define CELL_ENEMY 'e'
+#define ENTITY_PLAYER 'p'
+#define ENTITY_ENEMY 'e'
 
-#define CELL_HEART '+'
-#define CELL_POISON '-'
-#define CELL_BOMB '*'
+#define ENTITY_HEART '+'
+#define ENTITY_POISON '-'
+#define ENTITY_BOMB '*'
 
 
 // Player commands //

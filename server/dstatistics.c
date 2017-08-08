@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
-#include "statistics.h"
+#include "dstatistics.h"
 
 
 void record_in_statistics(int id, int health) {

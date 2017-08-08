@@ -4,7 +4,7 @@
 
 #include "../all/dconnect.h"
 
-#include "game.h"
+#include "dgame.h"
 #include "level.h"
 
 
@@ -12,10 +12,10 @@
 
 void GameUpdate() {
 	while (isGameActive) {
-		Update();
+		d_game_update();
 	}
 	
-	Shutdown();
+	d_game_shutdown();
 	pthread_exit(NULL);
 }
 
@@ -35,7 +35,7 @@ void CommandsIn(void *arg) {
 		if (*(temp_pack->data) == 'q') {
 			remove_id(id);
 		} else {
-			unitsData[id].last_command = *(temp_pack->data);
+			units[id].last_action_stamp = *(temp_pack->data);
 		}
 		
 		d_all_delay(NET_PING);
@@ -45,31 +45,31 @@ void CommandsIn(void *arg) {
 }
 
 void CommandsOut(void *arg) {
-	UPACK_HEAD *temp_pack = make_UPACK(rowsCount * columnsCount);
+	UPACK_HEAD *temp_pack = make_UPACK(level_height * level_width);
 	
 	while (isGameActive) {
-		for (int id = 0; id < maxUnitsCount; id++) {
+		for (int id = 0; id < PLAYERS_MAX; id++) {
 			HR_ADDRESS addr;
 			resolve_id(&addr, id);
 			
-			memcpy(temp_pack->data, levelData,
-				   sizeof(char) * rowsCount * columnsCount);
+			memcpy(temp_pack->data, level,
+				   sizeof(char) * level_height * level_width);
 			temp_pack->type = DP_GAME;
-			d_server_send(temp_pack, UPACK_SIZE(rowsCount * columnsCount),
+			d_server_send(temp_pack, UPACK_SIZE(level_height * level_width),
 						  addr, NET_REPEAT_SERVER);
 		}
 		
-		for (int id = 0; id < maxUnitsCount; id++) {
+		for (int id = 0; id < PLAYERS_MAX; id++) {
 			HR_ADDRESS addr;
 			resolve_id(&addr, id);
 			
 			char str_health[3];
-			sprintf(str_health, "hp = %d", unitsData[id].health);
+			sprintf(str_health, "hp = %d", units[id].health);
 			
 			memcpy(temp_pack->data, str_health,
 				   sizeof(char) * 8);
 			temp_pack->type = DP_GAME_INFO;
-			d_server_send(temp_pack, UPACK_SIZE(rowsCount * columnsCount),
+			d_server_send(temp_pack, UPACK_SIZE(level_height * level_width),
 						  addr, NET_REPEAT_SERVER);
 		}
 		
@@ -104,7 +104,7 @@ void CurrentGame(void *arg) {
 		// Если указан другой 'mode', функция уничтожит все неподходящие пакеты
 		if ((d_server_get(0, temp_pack, UPACK_SIZE(MAX_STRLEN),
 						  &temp_addr) == -2) &&
-			(curr_users_num < maxUnitsCount)) {
+			(curr_users_num < PLAYERS_MAX)) {
 			continue;
 		}
 		
@@ -112,7 +112,7 @@ void CurrentGame(void *arg) {
 		if (temp_pack->type == DP_CONNECT) {
 			// Проверим, что он действительно хочет подключиться
 			if (temp_pack->stamp == DP_S_ASK) {
-				if (curr_users_num < maxUnitsCount) {
+				if (curr_users_num < PLAYERS_MAX) {
 					if (check_hr(temp_addr) == 0) {
 						add_hr(temp_addr, curr_users_num);
 						curr_users_num += 1;
@@ -134,12 +134,12 @@ void CurrentGame(void *arg) {
 			// поток не хочет подключаться
 		}
 		
-		if (curr_users_num == maxUnitsCount) {
+		if (curr_users_num == PLAYERS_MAX) {
 			Initialize("./map.txt");
 			
 			int id;
 			
-			for (id = 0; id < maxUnitsCount; id++) {
+			for (id = 0; id < PLAYERS_MAX; id++) {
 				HR_ADDRESS addr;
 				resolve_id(&addr, id);
 				
@@ -151,7 +151,7 @@ void CurrentGame(void *arg) {
 			d_all_delay(5.0);
 			printf("?\n");
 			
-			for (int id = 0; id < maxUnitsCount; id++) {
+			for (int id = 0; id < PLAYERS_MAX; id++) {
 				HR_ADDRESS addr;
 				resolve_id(&addr, id);
 				

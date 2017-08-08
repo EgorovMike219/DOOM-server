@@ -4,8 +4,8 @@
 #include <pthread.h>
 #include <stdlib.h>
 
-#include "../all/dconnect.h"
 #include "../all/gamekey.h"
+#include "../all/dconnect.h"
 
 #include "dclient_settings.h"
 
@@ -14,16 +14,20 @@
 
 /// Curses client variable
 int screen_width;
+
 /// Curses client variable
 int screen_height;
+
 /// Curses client variable
 int screen_width_middle;
+
 /// Curses client variable
 int screen_height_middle;
 
 
-/// Current tick
+/// In-game time
 TICK_TYPE tick;
+
 
 /// receive_game_info thread
 pthread_t receiver_id;
@@ -58,21 +62,21 @@ void curses_define_screen_size(void) {
  */
 chtype convert_symbol(char sym) {
 	switch (sym) {
-		case CELL_EMPTY:
+		case ENTITY_EMPTY:
 			return (chtype)' ';
-		case CELL_WALL:
+		case ENTITY_WALL:
 			return (chtype)'#';
 		
-		case CELL_PLAYER:
+		case ENTITY_PLAYER:
 			return (chtype)'@';
-		case CELL_ENEMY:
+		case ENTITY_ENEMY:
 			return (chtype)'$';
 		
-		case CELL_HEART:
+		case ENTITY_HEART:
 			return (chtype)'+';
-		case CELL_POISON:
+		case ENTITY_POISON:
 			return (chtype)'+';
-		case CELL_BOMB:
+		case ENTITY_BOMB:
 			return (chtype)'*';
 		
 		default:
