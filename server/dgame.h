@@ -29,6 +29,7 @@ typedef struct Weapon_Entity_t {
 	int damage;
 	int range;
 	int charge;
+	TICK_TYPE delay;
 } WEAPON;
 
 
@@ -47,8 +48,8 @@ typedef struct Unit_Entity_t {
 	int health;
 	WEAPON weapon;
 	
-	TICK_TYPE last_action_stamp;
-	TICK_TYPE action_delay;
+	TICK_TYPE next_action_tick;
+	TICK_TYPE move_delay;
 } UNIT;
 
 
@@ -73,7 +74,7 @@ TICK_TYPE tick;
 
 
 /// Level storage
-CELL** level;
+CELL* level;
 
 int level_width;
 
@@ -113,51 +114,61 @@ WEAPON poison_default;
  * @brief Load game level from file
  *
  * @param pathname
+ *
+ * @return 0 if successful
+ * @return -1 for errors
  */
-void d_level_load(char* pathname);
+int d_level_load(char* pathname);
 
 
 
 
 /**
- * @brief Use weapon ON (not by!) selected unit
- * @note 'WEAPON.charge' must be >= 1 and will be decreased by 1
+ * @brief Use weapon in a given cell
+ * @note 'weapon.charge' must be >= 1 and will be decreased by 1
+ * @note 'weapon.type' == ENTITY_EMPTY is allowed (returns 1)
  *
  * @param weapon
- * @param unit
+ * @param x
+ * @param y
  *
  * @return 0 if weapon is used successfully
- * @return 1 if weapon is out of charge
+ * @return 1 if weapon is out of charge or 'WEAPON.type' is ENTITY_EMPTY
  * @return -1 for errors
  */
-int d_weapon_operate(WEAPON* weapon, UNIT* unit);
+int d_weapon_activate(WEAPON *weapon, int x, int y);
 
 
 
 
 /**
  * @brief Move unit to a given position and process all effects (weapons, etc.)
+ * @note No health debuffs (level_*_health_reduction) are applied
+ * @note Weapons may be activated by this procedure
+ * @note Dead units will NOT be removed from the 'level' storage
  *
  * @param unit
  * @param x Destination x
  * @param y Destination y
  *
  * @return 0 if successful and unit stayed alive
- * @return 1 if successful and unit died
+ * @return 1 if successful and unit died or if unit is already dead
  * @return 2 if unit is unable to move at the moment
- * @return -1 for errors or if movement is impossible
+ * @return 3 if movement to given position is impossible
+ * @return -1 for errors
  */
 int d_unit_move(UNIT* unit, int x, int y);
 
 
 /**
  * @brief Use weapon a given unit has
+ * @note Dead units MAY use weapons if this function is called
  *
  * @param unit
  *
  * @return 0 if successful and given unit stayed alive
  * @return 1 if successful and given unit died
- * @return 2 if weapon cannot be used at the moment
+ * @return 2 if weapon cannot be used at the moment by a given unit
  * @return 3 if weapon has not enough charges
  * @return -1 for errors
  */
@@ -168,15 +179,16 @@ int d_unit_use_weapon(UNIT* unit);
 
 /**
  * @brief Process given command for a given unit
+ * @note Command may or may not be executed, according to the rules inside
  *
- * @param cmd
+ * @param cmd Command: one of pre-defined in `gamekey.h` constants 'CMD_*'
  * @param unit
  *
- * @return 0 if successful and given unit stayed alive
- * @return 1 if given unit died (cmd may be successful or not)
+ * @return 0 if given unit stayed alive
+ * @return 1 if given unit died or had already been dead
  * @return -1 for errors
  */
-int d_unit_process_command(char* cmd, UNIT* unit);
+int d_unit_process_command(const char* cmd, UNIT* unit);
 
 
 /**
@@ -185,7 +197,7 @@ int d_unit_process_command(char* cmd, UNIT* unit);
  * @return 0 if successful
  * @return -1 for errors
  */
-int d_game_update();
+int d_game_update(void);
 
 
 /**
@@ -196,13 +208,13 @@ int d_game_update();
  * @return -1 if game is over and there is no winner
  * @return 1 if game is over and some player is a winner
  */
-int d_game_refresh();
+int d_game_refresh(void);
 
 
 /**
  * @brief Safely end the game processing
  */
-void d_game_shutdown();
+void d_game_shutdown(void);
 
 
 

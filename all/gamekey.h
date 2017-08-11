@@ -24,13 +24,17 @@
 // Entity codes //
 #define ENTITY_EMPTY ' '
 #define ENTITY_WALL '#'
-
 #define ENTITY_PLAYER 'p'
 #define ENTITY_ENEMY 'e'
 
 #define ENTITY_HEART '+'
+#define ENTITY_HEART_NAME ""
+
 #define ENTITY_POISON '-'
+#define ENTITY_POISON_NAME ""
+
 #define ENTITY_BOMB '*'
+#define ENTITY_BOMB_NAME ""
 
 
 // Player commands //
@@ -38,7 +42,7 @@
 #define CMD_A 'a'
 #define CMD_S 's'
 #define CMD_D 'd'
-#define CMD_BOMB 'b'
+#define CMD_WEAPON 'b'
 #define CMD_QUIT 'q'
 #define CMD_NONE ' '
 

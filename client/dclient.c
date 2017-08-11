@@ -371,7 +371,7 @@ int main() {
 				break;
 			case 'b':
 			case 'B':
-				client_command = CMD_BOMB;
+				client_command = CMD_WEAPON;
 				break;
 			case 'q':
 			case 'Q':
@@ -387,7 +387,7 @@ int main() {
 		}
 		if ((client_command == CMD_W) || (client_command == CMD_A)
 			|| (client_command == CMD_S) || (client_command == CMD_D)
-			|| (client_command == CMD_BOMB)) {
+			|| (client_command == CMD_WEAPON)) {
 			pack_to_send ->type = DP_CLIENT_ACTION;
 			pack_to_send ->data[0] = client_command;
 		}

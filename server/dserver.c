@@ -35,7 +35,7 @@ void CommandsIn(void *arg) {
 		if (*(temp_pack->data) == 'q') {
 			remove_id(id);
 		} else {
-			units[id].last_action_stamp = *(temp_pack->data);
+			units[id].next_action_tick = *(temp_pack->data);
 		}
 		
 		d_all_delay(NET_PING);

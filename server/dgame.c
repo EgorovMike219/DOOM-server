@@ -3,168 +3,546 @@
 
 
 
-int d_weapon_operate(WEAPON* weapon, UNIT* unit) {
-	if ((weapon == NULL) || (unit == NULL)) {
+/**
+ * @brief Helper function for 'd_level_load'
+ *
+ * @param file
+ * @param holder
+ * @param setting
+ *
+ * @return 0 if successful
+ * @return -1 for errors
+ */
+int read_setting(FILE* file, int* holder, char* setting) {
+	static char string[SETTING_LENGTH];
+	static char dummy[1];
+	static char value[10];
+	if (fscanf(file, "%s%s%s", string, dummy, value) == EOF) {
+		fprintf(stderr, "Invalid map: Not all settings provided\n");
 		return -1;
 	}
-	if (weapon ->charge <= 0) {
+	if (strcmp(string, setting) != 0) {
+		fprintf(stderr,
+				"Invalid map: %s not found\n", setting);
+		return -1;
+	}
+	*holder = (int)strtol(value, NULL, 10);
+	return 0;
+}
+
+
+
+
+/**
+ * @brief Fill cell using default settings for a given entity
+ * @note This procedure does not place units (only their representation)
+ *
+ * @param cell
+ * @param representation Cell entity code (as defined in gamekey.h).
+ * Not all codes are allowed to be representation!
+ *
+ * @return 0 if successful
+ * @return -1 for errors
+ */
+int fill_cell(CELL* cell, char entity) {
+	if (cell == NULL) {
+		return -1;
+	}
+	
+	switch(entity) {
+		case ENTITY_EMPTY:
+		case ENTITY_WALL:
+			cell ->weapon.type = ENTITY_EMPTY;
+			cell ->representation = entity;
+		case ENTITY_PLAYER:
+		case ENTITY_ENEMY:
+			cell ->weapon.type = ENTITY_EMPTY;
+			cell ->representation = ENTITY_EMPTY;
+			break;
+		case ENTITY_HEART:
+			cell ->weapon.type = ENTITY_HEART;
+			strcpy(cell ->weapon.name, ENTITY_HEART_NAME);
+			cell ->weapon.damage = heal_default.damage;
+			cell ->weapon.range = heal_default.range;
+			cell ->weapon.charge = heal_default.charge;
+			cell ->representation = ENTITY_EMPTY;
+			break;
+		case ENTITY_POISON:
+			cell ->weapon.type = ENTITY_POISON;
+			strcpy(cell ->weapon.name, ENTITY_POISON_NAME);
+			cell ->weapon.damage = poison_default.damage;
+			cell ->weapon.range = poison_default.range;
+			cell ->weapon.charge = poison_default.charge;
+			cell ->representation = ENTITY_EMPTY;
+			break;
+		case ENTITY_BOMB:
+			cell ->weapon.type = ENTITY_BOMB;
+			strcpy(cell ->weapon.name, ENTITY_BOMB_NAME);
+			cell ->weapon.damage = bomb_default.damage;
+			cell ->weapon.range = bomb_default.range;
+			cell ->weapon.charge = bomb_default.charge;
+			cell ->representation = ENTITY_EMPTY;
+			break;
+		default:
+			return -1;
+	}
+
+	int i;
+	for (i = 0; i < UNITS_PER_CELL_MAX; i++) {
+		cell ->units[i] = NULL;
+	}
+	
+	return 0;
+}
+
+
+
+
+/**
+ * @brief Return index of a 'level' array for given coordinates
+ */
+int level_pos(int x, int y) {
+	return y * level_width + x;
+}
+
+
+
+
+int d_level_load(char *pathname) {
+	// Open map file
+	FILE *file;
+	file = fopen(pathname, "r");
+	if(file == NULL) {
+		fprintf(stderr, "Map file not found or cannot be open\n");
+		return -1;
+	}
+	
+	// Read settings
+	
+	if (read_setting(file, &level_width,
+					 "level_width") < 0) {
+		return -1;
+	}
+	if (read_setting(file, &level_height,
+					 "level_height") < 0) {
+		return -1;
+	}
+	if (read_setting(file, &level_active_health_reduction,
+					 "level_active_health_reduction") < 0) {
+		return -1;
+	}
+	if (read_setting(file, &level_passive_health_reduction,
+					 "level_passive_health_reduction") < 0) {
+		return -1;
+	}
+	
+	fgetc(file);  // One empty line
+	
+	if (read_setting(file, &(heal_default.damage),
+					 "heal_default.damage") < 0) {
+		return -1;
+	}
+	if (read_setting(file, &(heal_default.range),
+					 "heal_default.range") < 0) {
+		return -1;
+	}
+	if (read_setting(file, &(heal_default.charge),
+					 "heal_default.charge") < 0) {
+		return -1;
+	}
+	
+	if (read_setting(file, &(poison_default.damage),
+					 "poison_default.damage") < 0) {
+		return -1;
+	}
+	if (read_setting(file, &(poison_default.range),
+					 "poison_default.range") < 0) {
+		return -1;
+	}
+	if (read_setting(file, &(poison_default.charge),
+					 "poison_default.charge") < 0) {
+		return -1;
+	}
+	
+	if (read_setting(file, &(bomb_default.damage),
+					 "bomb_default.damage") < 0) {
+		return -1;
+	}
+	if (read_setting(file, &(bomb_default.range),
+					 "bomb_default.range") < 0) {
+		return -1;
+	}
+	if (read_setting(file, &(bomb_default.charge),
+					 "bomb_default.charge") < 0) {
+		return -1;
+	}
+	
+	fgetc(file);  // One empty line
+	
+	// Allocate memory and read cells
+	
+	level = (CELL*)malloc(sizeof(CELL) * level_width * level_height);
+	if (level == NULL) {
+		fprintf(stderr, "Malloc error: cannot allocate memory for level\n");
+		return -1;
+	}
+	
+	int x, y;
+	char buffer[level_width];
+	for (y = 0; y < level_height; y++) {
+		if (fgets(buffer, level_width + 2, file) == NULL) {
+			fprintf(stderr, "Invalid map: incorrect map size or shape\n");
+			return -1;
+		}
+		for (x = 0; x < level_width; x++) {
+			if (fill_cell(&(level[level_pos(x, y)]), buffer[x]) < 0) {
+				fprintf(stderr, "Invalid map: unknown cell\n");
+				return -1;
+			}
+		}
+	}
+	
+	fclose(file);
+	return 0;
+}
+
+
+
+
+int d_weapon_activate(WEAPON* weapon, int x, int y) {
+	if ((weapon == NULL) || (x >= level_width) || (y >= level_height)) {
+		return -1;
+	}
+	
+	if ((weapon ->type == ENTITY_EMPTY) || (weapon ->charge <= 0)) {
 		return 1;
 	}
+	
+	if ((weapon ->type == ENTITY_HEART) || (weapon ->type == ENTITY_POISON) ||
+			(weapon ->type == ENTITY_BOMB)) {
+		int x_use, y_use;
+		int i;
+		for (y_use = (y - weapon ->range + 1);
+			 y_use < (y + weapon ->range - 1);
+			 y++) {
+			for (x_use = (x - weapon ->range + 1);
+				 x_use < (x + weapon ->range - 1);
+				 x++) {
+				if ((x_use > level_width) || (x_use < 0) ||
+						(y_use > level_height) || (y_use < 0)) {
+					continue;
+				}
+				if (level[level_pos(x_use, y_use)].representation ==
+					ENTITY_WALL) {
+					continue;
+				}
+				for (i = 0; i < UNITS_PER_CELL_MAX; i++) {
+					if (level[level_pos(x_use, y_use)].units[i] == NULL) {
+						break;
+					}
+					level[level_pos(x_use, y_use)].units[i] ->health -=
+							weapon ->damage;
+					if (level[level_pos(x_use, y_use)].units[i] ->health < 0) {
+						level[level_pos(x_use, y_use)].units[i] ->health = 0;
+					}
+				}
+			}
+		}
+	}
+	else {
+		return -1;
+	}
+	
 	weapon ->charge -= 1;
-	unit ->health -= weapon ->damage;
-	if (unit ->health < 0) {
-		unit ->health = 0;
+	if (weapon ->charge == 0) {
+		if (level[level_pos(x, y)].weapon.type != ENTITY_EMPTY) {
+			level[level_pos(x, y)].weapon.type = ENTITY_EMPTY;
+		}
 	}
 	return 0;
 }
 
 
-void d_level_load(char *pathname) {
-	FILE *file;
-	int i,j;
-	file = fopen(pathname, "r");
-	if(file == NULL)
+
+
+int d_unit_move(UNIT* unit, int x, int y) {
+	// Argument checks
+	if (unit == NULL) {
+		return -1;
+	}
+	if ((x >= level_width) || (y >= level_height) || (x < 0) || (y < 0)) {
+		return -1;
+	}
+	
+	// Game checks
+	if (unit ->health <= 0) {
+		return 1;
+	}
+	if (unit ->next_action_tick < tick) {
+		return 2;
+	}
+	if (level[level_pos(x, y)].representation == ENTITY_WALL) {
+		return 3;
+	}
+	
+	// Check if given cell has free space to hold a unit
+	int new_i;
+	for (new_i = 0; new_i < UNITS_PER_CELL_MAX; new_i++) {
+		if (level[level_pos(x, y)].units[new_i] == NULL) {
+			break;
+		}
+	}
+	if (new_i == UNITS_PER_CELL_MAX) {
+		return 3;
+	}
+	
+	// Move unit
 	{
-		printf("can't open file\n");
-	}
-	char string[40];
-	if (fscanf (file, "%s%s%d", string, string, &level_active_health_reduction) == EOF) {
-		printf("can't read value of level_active_health_reduction\n");
-		exit(1);
-	}
-	if (fscanf (file, "%s%s%d", string, string, &level_passive_health_reduction) == EOF) {
-		printf("can't read value of level_passive_health_reduction\n");
-		exit(1);
-	}
-	if (fscanf (file, "%s%s%d", string, string, &DWEAPON_heal_damage) == EOF) {
-		printf("can't read value of DWEAPON_heal_damage\n");
-		exit(1);
-	}
-	if (fscanf (file, "%s%s%d", string, string, &DWEAPON_poison_damage) == EOF) {
-		printf("can't read value of DWEAPON_poison_damage\n");
-		exit(1);
-	}
-	if (fscanf (file, "%s%s%d", string, string, &DWEAPON_bomb_range) == EOF) {
-		printf("can't read value of DWEAPON_bomb_range\n");
-		exit(1);
-	}
-	if (fscanf (file, "%s%s%d", string, string, &DWEAPON_bomb_damage) == EOF) {
-		printf("can't read value of DWEAPON_bomb_damage\n");
-		exit(1);
-	}
-	if (fscanf (file, "%s%s%d", string, string, &level_height) == EOF) {
-		printf("can't read value of level_height\n");
-		exit(1);
-	}
-	if (fscanf (file, "%s%s%d", string, string, &level_width) == EOF) {
-		printf("can't read value of level_width\n");
-		exit(1);
-	}
-	fgets(string,level_width,file); // cчитываю пустую строку
-	levelData0 = (char**)malloc(level_height * sizeof(char*));
-	for (i = 0; i < level_height; ++i) {
-		levelData0[i] = (char*)malloc(level_width * sizeof(char));
-	}
-	for (i = 0; i < level_height; ++i) {
-		char str[level_width];
-		if (fgets(str, level_width + 2, file) == NULL) {
-			printf("error");
-			exit(1);
+		int prev_i;  // Player index at previous cell
+		for (prev_i = 0; prev_i < UNITS_PER_CELL_MAX; prev_i++) {
+			if (level[level_pos(unit ->x, unit ->y)].units[prev_i] == unit) {
+				break;
+			}
 		}
-		for (j = 0; j < level_width; ++j) {
-			levelData0[i][j] = str[j];
+		
+		int prev_li;  // Last (another) player index at previous cell
+		for (prev_li = UNITS_PER_CELL_MAX - 1; prev_li >= 0; prev_li--) {
+			if (level[level_pos(unit ->x, unit ->y)].units[prev_li] != NULL) {
+				break;
+			}
 		}
+		
+		if ((prev_i == UNITS_PER_CELL_MAX) || (prev_li < 0)) {  // Move error
+			return -1;
+		}
+		
+		if (prev_li == prev_i) {  // Given unit is the last one
+			level[level_pos(unit ->x, unit ->y)].units[prev_i] = NULL;
+		}
+		else {  // Make given unit the last one and then remove it
+			level[level_pos(unit ->x, unit ->y)].units[prev_i] =
+					level[level_pos(unit ->x, unit ->y)].units[prev_li];
+			level[level_pos(unit ->x, unit ->y)].units[prev_li] = NULL;
+		}
+		
+		level[level_pos(x, y)].units[new_i] = unit;
+		unit ->x = x;
+		unit ->y = y;
+		unit ->next_action_tick = tick + unit ->move_delay;
 	}
-	fclose(file);
+	
+	// Process side effects
+	d_weapon_activate(&(level[level_pos(x, y)].weapon), x, y);
+	if (unit ->health <= 0) {
+		unit ->health = 0;
+		return 1;
+	}
+	
+	return 0;
 }
 
 
 
-const int PLAYERS_MAX = 1;
+
+int d_unit_use_weapon(UNIT* unit) {
+	// Checks
+	if (unit == NULL) {
+		return -1;
+	}
+	if ((unit ->weapon.type == ENTITY_EMPTY) ||
+		(unit ->next_action_tick > tick) ||
+		(level[level_pos(unit ->x, unit ->y)].weapon.type != ENTITY_EMPTY)) {
+		return 2;
+	}
+	if (unit ->weapon.charge <= 0) {
+		return 3;
+	}
+	
+	switch (unit ->weapon.type) {
+		case ENTITY_BOMB:
+			level[level_pos(unit ->x, unit ->y)].weapon.type =
+					unit ->weapon.type;
+			strcpy(level[level_pos(unit ->x, unit ->y)].weapon.name,
+				   unit ->weapon.name);
+			level[level_pos(unit ->x, unit ->y)].weapon.damage =
+					unit ->weapon.damage;
+			level[level_pos(unit ->x, unit ->y)].weapon.range =
+					unit ->weapon.range;
+			level[level_pos(unit ->x, unit ->y)].weapon.charge =
+					1;
+			unit ->weapon.charge -= 1;
+			break;
+		case ENTITY_HEART:
+		case ENTITY_POISON:
+			if (d_weapon_activate(&(unit ->weapon), unit ->x, unit ->y) < 0) {
+				return -1;
+			}
+			break;
+		default:
+			return -1;
+	}
+	unit ->next_action_tick = tick + unit ->weapon.delay;
+	
+	if (unit ->health <= 0) {
+		unit ->health = 0;
+		return 1;
+	}
+	
+	return 0;
+}
 
 
-/////////////////////////////////////
-// Logics variables
-bool isGameActive = false;
-clock_t clockLastFrame = 0;
 
-int framesCounter = 0;
-float framesTimeCounter = 0;
-int fps = 0;
 
-int units_total = 0;
-int heroIndex = 0;
-
-bool InsertUnitOnMap(int *r, int *c) {
-	int i, j, r1, c1;
-	for (i = -1; i <= 1; ++i) {
-		for (j = -1; j <= 1; ++j) {
-			r1 = *r + i;
-			c1 = *c + j;
-			if (((r1 >= 0) && (r1 < level_height)) &&
-				((c1 >= 0) && (c1 < level_width))) {
-				if (level[r1][c1] == ENTITY_EMPTY) {
-					level[r1][c1] = ENTITY_PLAYER;
-					*r = r1;
-					*c = c1;
-					return true;
-				}
+int d_unit_process_command(const char* cmd, UNIT* unit) {
+	// Checks
+	if ((cmd == NULL) || (unit == NULL)) {
+		return -1;
+	}
+	if (unit ->health <= 0) {
+		return 1;
+	}
+	
+	// Process command
+	
+	char health_reduction_type;  // Type of planned health reduction ('p' / 'a')
+	int exec_result;
+	
+	if (*cmd == CMD_NONE) {
+		health_reduction_type = 'p';
+	}
+	else if (*cmd == CMD_W) {
+		if (unit ->y - 1 < 0) {
+			health_reduction_type = 'p';
+		}
+		else {
+			exec_result = d_unit_move(unit, unit ->x, unit ->y - 1);
+			if (exec_result == 0) {
+				health_reduction_type = 'a';
+			}
+			else if (exec_result > 0) {
+				health_reduction_type = 'p';
+			}
+			else {
+				return -1;
 			}
 		}
 	}
-	return false;
-}
-
-void Initialize(char *pathname) {
-	//read levelData0 and others
-	d_level_load(pathname);
-	
-	// Set clockLastFrame start value
-	clockLastFrame = clock();
-	
-	units = (UNIT *) malloc(units_total * sizeof(UNIT));
-	level = (char **) malloc(level_height * sizeof(char *));
-	for (int i = 0; i < level_height; ++i) {
-		level[i] = (char *) malloc(level_width * sizeof(char));
-	}
-	//units_total = 0; определяем в main-е
-	
-	int r, c;
-	// Load level
-	for (r = 0; r < level_height; r++) {
-		for (c = 0; c < level_width; c++) {
-			unsigned char cellSymbol = levelData0[r][c];
-			
-			level[r][c] = cellSymbol;
+	else if (*cmd == CMD_A) {
+		if (unit ->x - 1 < 0) {
+			health_reduction_type = 'p';
+		}
+		else {
+			exec_result = d_unit_move(unit, unit ->x - 1, unit ->y);
+			if (exec_result == 0) {
+				health_reduction_type = 'a';
+			}
+			else if (exec_result > 0) {
+				health_reduction_type = 'p';
+			}
+			else {
+				return -1;
+			}
 		}
 	}
-	int i, row, column;
-	
-	units_players = units_total;
-	UnitType unitType;
-	for (i = 0; i < units_total; ++i) {
-		unitType = UnitType_Hero;
-		do {
-			row = rand() % level_height;
-			column = rand() % level_width;
-		} while (InsertUnitOnMap(&row, &column) == false);
-		units[i].type = unitType;
-		units[i].id = i;
-		units[i].y = (float) (row);
-		units[i].x = (float) (column);
-		units[i].health = GetUnitDefaultHealth(unitType);
-		units[i].speed_x = 0.0;
-		units[i].speed_y = 0.0;
-		units[i].order_x = UnitOrder_None;
-		units[i].order_y = UnitOrder_None;
-		units[i].weapon = GetUnitDefaultWeapon(unitType);
-		units[i].weapon_charge = GetUnitDefaultCountOfCharge();
+	else if (*cmd == CMD_S) {
+		if (unit ->y + 1 >= level_height) {
+			health_reduction_type = 'p';
+		}
+		else {
+			exec_result = d_unit_move(unit, unit ->x, unit ->y + 1);
+			if (exec_result == 0) {
+				health_reduction_type = 'a';
+			}
+			else if (exec_result > 0) {
+				health_reduction_type = 'p';
+			}
+			else {
+				return -1;
+			}
+		}
 	}
-	heroIndex = 0;
-	isGameActive = true;  // Костя просил убрать
+	else if (*cmd == CMD_D) {
+		if (unit ->x + 1 >= level_width) {
+			health_reduction_type = 'p';
+		}
+		else {
+			exec_result = d_unit_move(unit, unit ->x + 1, unit ->y);
+			if (exec_result == 0) {
+				health_reduction_type = 'a';
+			}
+			else if (exec_result > 0) {
+				health_reduction_type = 'p';
+			}
+			else {
+				return -1;
+			}
+		}
+	}
+	else if (*cmd == CMD_WEAPON) {
+		exec_result = d_unit_use_weapon(unit);
+		if (exec_result == 0) {
+			health_reduction_type = 'a';
+		}
+		else if (exec_result > 0) {
+			health_reduction_type = 'p';
+		}
+		else {
+			return -1;
+		}
+	}
+	else if (*cmd == CMD_QUIT){
+		unit ->health = 0;
+		health_reduction_type = 'p';
+	}
+	else {
+		return 0;
+	}
+	
+	// Process health reduction
+	if (health_reduction_type == 'p') {
+		unit ->health -= level_passive_health_reduction;
+	}
+	else {
+		unit ->health -= level_active_health_reduction;
+	}
+	
+	// Remove dead unit from the map (but leave its position unchanged)
+	if (unit ->health <= 0) {
+		unit ->health = 0;
+		int i;  // Dead unit position in level[...].units array
+		for (i = 0; i < UNITS_PER_CELL_MAX; i++) {
+			if (level[level_pos(unit ->x, unit ->y)].units[i] == unit) {
+				break;
+			}
+		}
+		
+		int i_last;  // Last unit position in level[...].units array
+		for (i_last = UNITS_PER_CELL_MAX - 1; i >= 0; i--) {
+			if (level[level_pos(unit ->x, unit ->y)].units[i_last] != NULL) {
+				break;
+			}
+		}
+		
+		if ((i_last < 0) || (i == UNITS_PER_CELL_MAX)) {
+			return -1;
+		}
+		
+		if (i_last == i) {  // Dead unit is the last one
+			level[level_pos(unit ->x, unit ->y)].units[i] = NULL;
+		}
+		else {  // Make dead unit the last one and then remove it
+			level[level_pos(unit ->x, unit ->y)].units[i] =
+					level[level_pos(unit ->x, unit ->y)].units[i_last];
+			level[level_pos(unit ->x, unit ->y)].units[i_last] = NULL;
+		}
+	}
 }
 
-int d_game_update() {
+
+
+
+int d_game_update(void) {
 	// Calculate delta time
 	clock_t clockNow = clock();
 	clock_t deltaClock = clockNow - clockLastFrame;
@@ -184,8 +562,8 @@ int d_game_update() {
 	int i, c;
 	// Hero control
 	for (i = 0; i < units_total; ++i) {
-		c = units[i].last_action_stamp;
-		units[i].last_action_stamp = -1; // хорошо было бы иметь атомики
+		c = units[i].next_action_tick;
+		units[i].next_action_tick = -1; // хорошо было бы иметь атомики
 		if (c == 'w') {
 			units[i].order_y = UnitOrder_Backward;
 		}
@@ -220,7 +598,17 @@ int d_game_update() {
 		isGameActive = false;
 }
 
-void d_game_shutdown() {
+
+
+
+int d_game_refresh(void) {
+
+}
+
+
+
+
+void d_game_shutdown(void) {
 	int i;
 	for (i = 0; i < level_height; ++i) {
 		free(levelData0[i]);
@@ -231,215 +619,5 @@ void d_game_shutdown() {
 	free(units);
 }
 
-bool d_unit_move(UNIT *unit, int x, int y) {
-	// Ignore dead units
-	if (unit->health <= 0) {
-		return false;
-	}
-	
-	int row = (int) (y);
-	int column = (int) (x);
-	int oldRow = (int) (unit->y);
-	int oldColumn = (int) (unit->x);
-	
-	unsigned char unitSymbol = level[oldRow][oldColumn];
-	unsigned char destinationCellSymbol = level[row][column];
-	bool canMoveToCell = false;
-	
-	// All units actions
-	
-	// Empty cell
-	if (destinationCellSymbol == ENTITY_EMPTY) {
-		canMoveToCell = true;
-	}
-	// Units cells
-	if (destinationCellSymbol == ENTITY_PLAYER) {
-		UnitType destinationUnitType = GetUnitTypeFromCell(
-				destinationCellSymbol);
-		
-		// Find enemy unit struct
-		for (int u = 0; u < units_total; u++) {
-			// Ignore dead units
-			if (units[u].health <= 0)
-				continue;
-			
-			// Ignore yourself
-			if (&units[u] == unit)
-				continue;
-			
-			if ((int) (units[u].y) == row &&
-				(int) (units[u].x) == column) {
-				// Calculate weapon DWEAPON_bomb_damage
-				int damage = GetWeaponDamage(WeaponType_Fist);
-				
-				// Deal DWEAPON_bomb_damage
-				units[u].health -= damage;
-				
-				// If enemy unit die
-				if (units[u].health <= 0) {
-					level[row][column] = ENTITY_EMPTY;
-					units_players--;
-				}
-				
-				break;
-			}
-		}
-	}
-	
-	// Only hero actions
-	if (unit->type == UnitType_Hero) {
-		// Heart
-		if (destinationCellSymbol == ENTITY_HEART) {
-			canMoveToCell = true;
-			unit->health += DWEAPON_heal_damage;
-		}
-		// Poison
-		if (destinationCellSymbol == ENTITY_POISON) {
-			canMoveToCell = true;
-			unit->health -= DWEAPON_poison_damage;
-			if (unit->health <= 0) {
-				units_players--;
-			}
-		}
-	}
-	
-	if (canMoveToCell) {
-		// Remove unit symbol from previous position
-		level[oldRow][oldColumn] = ENTITY_EMPTY;
-		
-		// Set new hero position
-		unit->x = x;
-		unit->y = y;
-		
-		// Set hero symbol to new position
-		level[row][column] = unitSymbol;
-	}
-	
-	return canMoveToCell;
-}
 
-void SetBomb(UNIT *pointerToUnitData) {
-	pointerToUnitData->weapon_charge -= 1;
-	for (int u = 0; u < units_total; u++) {
-		// Ignore dead units
-		if (units[u].health <= 0)
-			continue;
-		
-		// Ignore yourself
-		if (&units[u] == pointerToUnitData)
-			continue;
-		
-		int row = (int) (pointerToUnitData->y);
-		int column = (int) (pointerToUnitData->x);
-		int max, unit_damage;
-		if ((int) (units[u].y) <= row + DWEAPON_bomb_range &&
-			(int) (units[u].y) >= row - DWEAPON_bomb_range &&
-			(int) (units[u].x) <= column + DWEAPON_bomb_range &&
-			(int) (units[u].x) >= column - DWEAPON_bomb_range) {
-			max = abs((int) (units[u].y) - row);
-			if (abs((int) (units[u].x) - column) > max) {
-				max = abs((int) (units[u].x) - column);
-			}
-			unit_damage = (int) (DWEAPON_bomb_damage / DWEAPON_bomb_range *
-								 (DWEAPON_bomb_range + 1 - max));
-			if (unit_damage > 0) {
-				units[u].health -= unit_damage; // пока без препятствий
-			}
-			if (units[u].health <= 0) {
-				units_players--;
-			}
-		}
-	}
-	
-}
 
-int d_unit_process_command(char *cmd, UNIT *unit) {
-	// Unit row and column
-	int row = (int) (unit->y);
-	int column = (int) (unit->x);
-	
-	
-	// X Order
-	if (unit->order_x == UnitOrder_Backward) {
-		unit->speed_x = -GetUnitSpeed(unit->type);
-	} else {
-		if (unit->order_x == UnitOrder_Forward) {
-			unit->speed_x = GetUnitSpeed(unit->type);
-		} else {
-			unit->speed_x = 0;
-		}
-	}
-	
-	// Y Order
-	if (unit->order_y == UnitOrder_Backward) {
-		unit->speed_y = -GetUnitSpeed(unit->type);
-	} else {
-		if (unit->order_y == UnitOrder_Forward) {
-			unit->speed_y = GetUnitSpeed(unit->type);
-		} else {
-			unit->speed_y = 0;
-		}
-	}
-	
-	
-	// New position
-	float deltaY = unit->speed_y * deltaTime;
-	float deltaX = unit->speed_x * deltaTime;
-	float newY = unit->y + deltaY;
-	float newX = unit->x + deltaX;
-	int newRow = (int) (newY);
-	int newColumn = (int) (newX);
-	
-	
-	// Y( row ) step
-	if (newRow != row) {
-		// If unit can go to cell
-		if (newRow < 0) {
-			unit->y = row + cellBeginValue;
-		} else {
-			if (newRow >= level_height) {
-				unit->y = row + cellEndValue;
-			} else {
-				if (d_unit_move(unit, unit->x, newY) ==
-					false) {
-					// Can not move cell down
-					if (newRow > row) {
-						unit->y = row + cellEndValue;
-					} else {
-						unit->y = row + cellBeginValue;
-					}
-				}
-			}
-		}
-	} else {
-		unit->y = newY;
-	}
-	
-	// X( column ) step
-	if (newColumn != column) {
-		// If unit can go to cell
-		if (newColumn < 0) {
-			unit->x = column + cellBeginValue;
-		} else {
-			if (newColumn >= level_width) {
-				unit->x = column + cellEndValue;
-			} else {
-				if (d_unit_move(unit, newX, unit->y) ==
-					false) {
-					// Can not move cell right
-					if (newColumn > column) {
-						unit->x = column + cellEndValue;
-					} else {
-						unit->x = column + cellBeginValue;
-					}
-				}
-			}
-		}
-	} else {
-		unit->x = newX;
-	}
-	unit->order_x = UnitOrder_None;
-	unit->order_y = UnitOrder_None;
-	unit->speed_x = 0;
-	unit->speed_y = 0;
-}
