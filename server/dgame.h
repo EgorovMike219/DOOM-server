@@ -188,7 +188,7 @@ int d_unit_use_weapon(UNIT* unit);
  * @return 1 if given unit died or had already been dead
  * @return -1 for errors
  */
-int d_unit_process_command(const char* cmd, UNIT* unit);
+int d_unit_process_command(char cmd, UNIT* unit);
 
 
 /**
@@ -201,12 +201,13 @@ int d_game_update(void);
 
 
 /**
- * @brief Test if the game is over and increase 'tick' by 1 if it is not
+ * @brief Test if the game is over and increase 'tick' by 1 ONLY IF it is not
  * @note This function does NOT update the game by calling 'd_game_update()'
  *
  * @return 0 if game should continue
- * @return -1 if game is over and there is no winner
  * @return 1 if game is over and some player is a winner
+ * @return -1 if game is over and there is no winner
+ * @return -2 for errors
  */
 int d_game_refresh(void);
 

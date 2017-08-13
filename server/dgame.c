@@ -184,6 +184,7 @@ int d_level_load(char *pathname) {
 	level = (CELL*)malloc(sizeof(CELL) * level_width * level_height);
 	if (level == NULL) {
 		fprintf(stderr, "Malloc error: cannot allocate memory for level\n");
+		fclose(file);
 		return -1;
 	}
 	
@@ -192,11 +193,13 @@ int d_level_load(char *pathname) {
 	for (y = 0; y < level_height; y++) {
 		if (fgets(buffer, level_width + 2, file) == NULL) {
 			fprintf(stderr, "Invalid map: incorrect map size or shape\n");
+			fclose(file);
 			return -1;
 		}
 		for (x = 0; x < level_width; x++) {
 			if (fill_cell(&(level[level_pos(x, y)]), buffer[x]) < 0) {
 				fprintf(stderr, "Invalid map: unknown cell\n");
+				fclose(file);
 				return -1;
 			}
 		}
@@ -394,13 +397,10 @@ int d_unit_use_weapon(UNIT* unit) {
 
 
 
-int d_unit_process_command(const char* cmd, UNIT* unit) {
+int d_unit_process_command(char cmd, UNIT* unit) {
 	// Checks
-	if ((cmd == NULL) || (unit == NULL)) {
+	if (unit == NULL) {
 		return -1;
-	}
-	if (unit ->health <= 0) {
-		return 1;
 	}
 	
 	// Process command
@@ -408,10 +408,10 @@ int d_unit_process_command(const char* cmd, UNIT* unit) {
 	char health_reduction_type;  // Type of planned health reduction ('p' / 'a')
 	int exec_result;
 	
-	if (*cmd == CMD_NONE) {
+	if (cmd == CMD_NONE) {
 		health_reduction_type = 'p';
 	}
-	else if (*cmd == CMD_W) {
+	else if (cmd == CMD_W) {
 		if (unit ->y - 1 < 0) {
 			health_reduction_type = 'p';
 		}
@@ -428,7 +428,7 @@ int d_unit_process_command(const char* cmd, UNIT* unit) {
 			}
 		}
 	}
-	else if (*cmd == CMD_A) {
+	else if (cmd == CMD_A) {
 		if (unit ->x - 1 < 0) {
 			health_reduction_type = 'p';
 		}
@@ -445,7 +445,7 @@ int d_unit_process_command(const char* cmd, UNIT* unit) {
 			}
 		}
 	}
-	else if (*cmd == CMD_S) {
+	else if (cmd == CMD_S) {
 		if (unit ->y + 1 >= level_height) {
 			health_reduction_type = 'p';
 		}
@@ -462,7 +462,7 @@ int d_unit_process_command(const char* cmd, UNIT* unit) {
 			}
 		}
 	}
-	else if (*cmd == CMD_D) {
+	else if (cmd == CMD_D) {
 		if (unit ->x + 1 >= level_width) {
 			health_reduction_type = 'p';
 		}
@@ -479,7 +479,7 @@ int d_unit_process_command(const char* cmd, UNIT* unit) {
 			}
 		}
 	}
-	else if (*cmd == CMD_WEAPON) {
+	else if (cmd == CMD_WEAPON) {
 		exec_result = d_unit_use_weapon(unit);
 		if (exec_result == 0) {
 			health_reduction_type = 'a';
@@ -491,12 +491,12 @@ int d_unit_process_command(const char* cmd, UNIT* unit) {
 			return -1;
 		}
 	}
-	else if (*cmd == CMD_QUIT){
+	else if (cmd == CMD_QUIT){
 		unit ->health = 0;
 		health_reduction_type = 'p';
 	}
 	else {
-		return 0;
+		return -1;  // Unknown command
 	}
 	
 	// Process health reduction
@@ -536,87 +536,98 @@ int d_unit_process_command(const char* cmd, UNIT* unit) {
 					level[level_pos(unit ->x, unit ->y)].units[i_last];
 			level[level_pos(unit ->x, unit ->y)].units[i_last] = NULL;
 		}
+		
+		return 1;
 	}
+	
+	return 0;
 }
 
 
 
 
 int d_game_update(void) {
-	// Calculate delta time
-	clock_t clockNow = clock();
-	clock_t deltaClock = clockNow - clockLastFrame;
-	float deltaTime = (float) (deltaClock) / CLOCKS_PER_SEC;
-	clockLastFrame = clockNow;
-	
-	
-	// Calculate FPS
-	framesCounter++;
-	framesTimeCounter += deltaTime;
-	if (framesTimeCounter >= 1.0) {
-		framesTimeCounter -= 1.0;
-		fps = framesCounter;
-		framesCounter = 0;
+	// Checks
+	if ((units_total <= 0) || (level == NULL) || (units == NULL)) {
+		return -1;
 	}
 	
-	int i, c;
-	// Hero control
-	for (i = 0; i < units_total; ++i) {
-		c = units[i].next_action_tick;
-		units[i].next_action_tick = -1; // хорошо было бы иметь атомики
-		if (c == 'w') {
-			units[i].order_y = UnitOrder_Backward;
+	// Processing
+	int i;
+	int exec_result;
+	for (i = 0; i < units_total; i++) {
+		exec_result = d_unit_process_command(units_cmd[i], &(units[i]));
+		if (exec_result == 0) {
+			// Log action
 		}
-		if (c == 's') {
-			units[i].order_y = UnitOrder_Forward;
+		else if (exec_result > 0) {
+			// Log death
 		}
-		
-		if (c == 'a') {
-			units[i].order_x = UnitOrder_Backward;
+		else {
+			// Log error
 		}
-		if (c == 'd') {
-			units[i].order_x = UnitOrder_Forward;
-		}
-		if (c == 'b') {
-			SetBomb(&units[i]);
-		}
-		if (c == 'q') {
-			isGameActive = false;
-		}
+		units_cmd[i] = CMD_NONE;
 	}
 	
-	
-	// d_game_update all units
-	for (int u = 0; u < units_total; u++) {
-		d_unit_process_command(NULL, &units[u]);
-		//record_in_statistics(units[u].id, units[u].health);
-	}
-	
-	
-	// Hero dead
-	if (units_players <= 1)
-		isGameActive = false;
+	return 0;
 }
 
 
 
 
 int d_game_refresh(void) {
-
+	// Checks
+	if ((units_total <= 0) || (level == NULL) || (units == NULL)) {
+		return -2;
+	}
+	
+	// Count number of units and enemies alive
+	int i;
+	int total_players_alive = 0;
+	int total_enemies_alive = 0;
+	for (i = 0; i < units_total; i++) {
+		if (units[i].health > 0) {
+			if (units[i].type == ENTITY_PLAYER) {
+				total_players_alive += 1;
+			}
+			else {  // if (units[i].type == ENTITY_ENEMY)
+				total_enemies_alive += 1;
+			}
+		}
+	}
+	
+	// Compute exit code
+	int exit_code;
+	if (total_players_alive > 1) {
+		exit_code = 0;
+	}
+	else if (total_players_alive == 1) {
+		if (total_enemies_alive > 0) {
+			exit_code = 0;
+		}
+		else {
+			exit_code = 1;
+		}
+	}
+	else {
+		exit_code = -1;
+	}
+	
+	// Increase tick ONLY IF the game must continue
+	if (exit_code == 0) {
+		tick += 1;
+	}
+	
+	return exit_code;
 }
 
 
 
 
 void d_game_shutdown(void) {
-	int i;
-	for (i = 0; i < level_height; ++i) {
-		free(levelData0[i]);
-		free(level[i]);
-	}
-	free(levelData0);
 	free(level);
 	free(units);
+	free(units_cmd);
 }
 
 
