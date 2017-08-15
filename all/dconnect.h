@@ -47,8 +47,11 @@ typedef struct All_Net_packheader_t {
 } UPACK_HEAD;
 
 
-/// Return UPACK size to place 'i' chars into data
-#define UPACK_SIZE(i) (86 + (i))
+/**
+ * @brief Return UPACK size to place 'i' chars into data
+ * @note Values MUST be checked if UPACK_HEAD is changed
+ */
+#define UPACK_SIZE(i) (8 + 8 + (i))
 
 
 /**
