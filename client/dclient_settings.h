@@ -4,14 +4,9 @@
 
 
 
-// Game field parameters
-#define CLIENT_FIELD_HEIGHT 10
-#define CLIENT_FIELD_WIDTH 10
-#define CLIENT_FIELD_AREA (CLIENT_FIELD_WIDTH * CLIENT_FIELD_HEIGHT)
-
 // Additional graphics parameters
 #define CLIENT_FIELD_BORDER 1
-#define CLIENT_INFO_SIZE 3
+#define CLIENT_INFO_SIZE 4
 
 #define DISPLAY_BACKGROUND 1
 #define DISPLAY_ID_BORDER 2

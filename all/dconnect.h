@@ -36,13 +36,29 @@ typedef struct All_Net_clientaddr_t {
 
 
 /**
+ * @brief Compare two HR_ADDRESSes
+ *
+ * @param a
+ * @param b
+ *
+ * @return 0 if HR_ADDRESSes are equal
+ * @return -1 if HR_ADDRESSes are NOT equal
+ */
+int d_compare_hr(const HR_ADDRESS *a, const HR_ADDRESS *b);
+
+
+
+
+/**
  * @brief Universal packet header
  */
 typedef struct All_Net_packheader_t {
 	/// Packet type and operation it performs. Use predefined constants!
-	int16_t type;
-	/// Meta-information about this packet
-	TICK_TYPE stamp;
+	int32_t type;
+	/// Meta-information
+	int32_t meta;
+	/// Tick signature (also used as meta-information sometimes)
+	TICK_TYPE stamp;	// Todo: Remove meta usages of this
 	char data[1];
 } UPACK_HEAD;
 
@@ -51,7 +67,7 @@ typedef struct All_Net_packheader_t {
  * @brief Return UPACK size to place 'i' chars into data
  * @note Values MUST be checked if UPACK_HEAD is changed
  */
-#define UPACK_SIZE(i) (8 + 8 + (i))
+#define UPACK_SIZE(i) (4 + 4 + 8 + (i))
 
 
 /**

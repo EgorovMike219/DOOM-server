@@ -9,7 +9,7 @@
 #include "../all/gamekey.h"
 
 #include "dgame_settings.h"
-#include "dstatistics.h"
+#include "dlog.h"
 
 
 
@@ -84,6 +84,9 @@ int level_active_health_reduction;
 
 int level_passive_health_reduction;
 
+/// Number of turns any unit may stay alive performing no actions
+int level_passive_turns;
+
 
 /// Unit storage
 UNIT* units;
@@ -111,12 +114,25 @@ WEAPON poison_default;
 // ========================================================================== //
 
 /**
+ * @return Position of a given cell in 'level' array
+ *
+ * @param x
+ * @param y
+ */
+int d_level_pos(int x, int y);
+
+
+
+
+/**
  * @brief Load game level from file
  *
  * @param pathname
  *
  * @return 0 if successful
  * @return -1 for errors
+ *
+ * @note Logging inside
  */
 int d_level_load(char* pathname);
 
@@ -173,6 +189,19 @@ int d_unit_move(UNIT* unit, int x, int y);
  * @return -1 for errors
  */
 int d_unit_use_weapon(UNIT* unit);
+
+
+/**
+ * @brief Find a random position to place a unit to
+ * @note 'level' must be initialized before the execution
+ *
+ * @param x
+ * @param y
+ *
+ * @return 0 if successful
+ * @return -1 for errors
+ */
+int d_unit_get_position(int* x, int* y);
 
 
 

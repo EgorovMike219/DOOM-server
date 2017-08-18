@@ -28,6 +28,9 @@ int screen_height_middle;
 /// In-game time
 TICK_TYPE tick;
 
+/// This client ID on server
+int id;
+
 
 /// receive_game_info thread
 pthread_t receiver_id;
@@ -110,6 +113,14 @@ void display_game(UPACK_HEAD* pack_to_receive) {
 	
 	int x;
 	int y;
+	int i;
+	
+	int health;
+	int health_percent;
+	char weapon_name[5];
+	int weapon_charge;
+	char command[INFO_LENGTH];
+
 	
 	
 	// Draw borders
@@ -145,12 +156,46 @@ void display_game(UPACK_HEAD* pack_to_receive) {
 	}
 	attroff(COLOR_PAIR(DISPLAY_ID_FIELD));
 	
-	/*
-	// Draw game info
+	// Decode game info
+	sscanf(pack_to_receive ->data + (CLIENT_FIELD_WIDTH * CLIENT_FIELD_HEIGHT),
+		   "%d %d %s %d %s",
+		   &health, &health_percent, weapon_name, &weapon_charge, command);
+	
+	// Draw info
 	attron(COLOR_PAIR(DISPLAY_ID_INFO));
-	// TODO: Print game info
+	
+	move(height_start, width_field_start);
+	printw("%s", weapon_name);
+	move(height_start, width_field_start + 6);
+	printw("TICK");
+	
+	move(height_start + 1, width_field_start);
+	printw("%04d", weapon_charge);
+	move(height_start + 1, width_field_start + 6);
+	printw("%04d", (int)(tick % 10000));
+	
+	move(height_start + 2, width_field_start + 1);
+	printw("HP     HP");
+	move(height_start + 2, width_field_start + 3);
+	printw("%05d", health);
+	
+	move(height_start + 3, width_field_start);
+	printw(">");
+	
+	move(height_field_start + CLIENT_FIELD_HEIGHT + CLIENT_FIELD_BORDER,
+		 width_field_start + 1);
+	printw("DOOM-0592");
 	attroff(COLOR_PAIR(DISPLAY_ID_INFO));
-	*/
+	
+	attron(COLOR_PAIR(DISPLAY_ID_HEALTH));
+	move(height_start + 3, width_field_start + 1);
+	for (i = 0; i < health_percent; i++) {
+		printw("+");
+	}
+	for (i = health_percent; i < 11; i++) {
+		printw(" ");
+	}
+	attroff(COLOR_PAIR(DISPLAY_ID_HEALTH));
 	
 	refresh();
 }
@@ -160,7 +205,7 @@ void display_game(UPACK_HEAD* pack_to_receive) {
  * @brief Thread function. Receives all available data from server
  * and calls display_game() each time new DP_GAME packet is received
  */
-void* receive_display_game(void *dummy) {
+void* receive_display_game(void* dummy) {
 	UPACK_HEAD* pack_to_receive = make_UPACK(UDP_MAX_PACKET_SIZE);
 	short keep_receiving = 1;
 	
@@ -291,6 +336,7 @@ int main() {
 			}
 			else if ((pack_to_receive ->type == DP_GAME_PREPARE) ||
 					(pack_to_receive ->type == DP_GAME_BEGIN)) {
+				id = pack_to_receive ->meta;
 				clear();
 				refresh();
 				break;
@@ -396,6 +442,7 @@ int main() {
 		}
 		
 		pack_to_send ->stamp = tick;
+		pack_to_send ->meta = id;
 		d_client_send(pack_to_send, UPACK_SIZE(1), NET_REPEAT_CLIENT);
 		
 		if (pack_to_send ->type == DP_CLIENT_STOP) {

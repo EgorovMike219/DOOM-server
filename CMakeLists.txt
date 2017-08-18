@@ -19,23 +19,13 @@ set(SERVER_SOURCE_FILES
 	./all/gamekey.h
 	
 	server/dgame.c
-	server/dstatistics.c
+	server/dlog.c
 	server/dserver.c
 	server/dgame_settings.h
 	)
 add_executable(server ${SERVER_SOURCE_FILES})
 target_link_libraries(server ${CURSES_LIBRARIES})
 target_link_libraries(server pthread)
-
-
-set(TSERVER_SOURCE_FILES
-	./all/dconnect_settings.h
-	./all/dconnect.c
-	./all/gamekey.h
-	
-	./all/net_server.c
-	)
-add_executable(tserver ${TSERVER_SOURCE_FILES})
 
 
 set(CLIENT_SOURCE_FILES
@@ -49,3 +39,14 @@ set(CLIENT_SOURCE_FILES
 add_executable(client ${CLIENT_SOURCE_FILES})
 target_link_libraries(client ${CURSES_LIBRARIES})
 target_link_libraries(client pthread)
+
+
+set(TSERVER_SOURCE_FILES
+		./all/dconnect_settings.h
+		./all/dconnect.c
+		./all/gamekey.h
+		
+		./all/net_server.c
+		)
+add_executable(tserver ${TSERVER_SOURCE_FILES})
+

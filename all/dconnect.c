@@ -26,8 +26,7 @@ struct Client_Net_data_t {
 
 
 
-// Compare two HR_ADDRESS. Return 0 if equal, otherwise -1
-int compare_hr(const HR_ADDRESS* a, const HR_ADDRESS* b) {
+int d_compare_hr(const HR_ADDRESS *a, const HR_ADDRESS *b) {
 	if (a ->port != b ->port) {
 		return -1;
 	}
@@ -349,7 +348,7 @@ int d_client_get(void* data, size_t data_length, TICK_TYPE tick) {
 		}
 		
 		transform_to_hr_(&addr_T, &recieved_hr);
-		if (compare_hr(&server_hr, &recieved_hr) != 0) {
+		if (d_compare_hr(&server_hr, &recieved_hr) != 0) {
 			continue;
 		}
 

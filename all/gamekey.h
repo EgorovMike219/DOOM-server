@@ -9,10 +9,17 @@
 
 
 /// Maximum length of all names in the game
-#define NAME_LENGTH 64
+#define NAME_LENGTH 4
 
-/// Maximum allowed number of players in the game
-#define PLAYERS_MAX 8
+/// Maximum length of game information (send via network)
+#define INFO_LENGTH 128
+
+
+#define CLIENT_FIELD_HEIGHT 11
+
+#define CLIENT_FIELD_WIDTH 11
+
+#define CLIENT_FIELD_AREA CLIENT_FIELD_HEIGHT * CLIENT_FIELD_WIDTH
 
 
 

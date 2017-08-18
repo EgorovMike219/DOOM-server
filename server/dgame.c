@@ -54,6 +54,7 @@ int fill_cell(CELL* cell, char entity) {
 		case ENTITY_WALL:
 			cell ->weapon.type = ENTITY_EMPTY;
 			cell ->representation = entity;
+			break;
 		case ENTITY_PLAYER:
 		case ENTITY_ENEMY:
 			cell ->weapon.type = ENTITY_EMPTY;
@@ -98,10 +99,7 @@ int fill_cell(CELL* cell, char entity) {
 
 
 
-/**
- * @brief Return index of a 'level' array for given coordinates
- */
-int level_pos(int x, int y) {
+int d_level_pos(int x, int y) {
 	return y * level_width + x;
 }
 
@@ -113,11 +111,13 @@ int d_level_load(char *pathname) {
 	FILE *file;
 	file = fopen(pathname, "r");
 	if(file == NULL) {
-		fprintf(stderr, "Map file not found or cannot be open\n");
+		d_log("CRI: Map file not found or cannot be open");
 		return -1;
 	}
 	
 	// Read settings
+	
+	int temporary_holder;
 	
 	if (read_setting(file, &level_width,
 					 "level_width") < 0) {
@@ -133,6 +133,10 @@ int d_level_load(char *pathname) {
 	}
 	if (read_setting(file, &level_passive_health_reduction,
 					 "level_passive_health_reduction") < 0) {
+		return -1;
+	}
+	if (read_setting(file, &level_passive_turns,
+					 "level_passive_turns") < 0) {
 		return -1;
 	}
 	
@@ -176,14 +180,21 @@ int d_level_load(char *pathname) {
 					 "bomb_default.charge") < 0) {
 		return -1;
 	}
+	if (read_setting(file, &temporary_holder,
+					 "bomb_default.delay") < 0) {
+		return -1;
+	}
+	bomb_default.delay = (TICK_TYPE)temporary_holder;
+	strcpy(bomb_default.name, "BOMB");
 	
 	fgetc(file);  // One empty line
+	fgetc(file);
 	
 	// Allocate memory and read cells
 	
 	level = (CELL*)malloc(sizeof(CELL) * level_width * level_height);
 	if (level == NULL) {
-		fprintf(stderr, "Malloc error: cannot allocate memory for level\n");
+		d_log("CRI: Level allocation unsuccessful");
 		fclose(file);
 		return -1;
 	}
@@ -192,13 +203,13 @@ int d_level_load(char *pathname) {
 	char buffer[level_width];
 	for (y = 0; y < level_height; y++) {
 		if (fgets(buffer, level_width + 2, file) == NULL) {
-			fprintf(stderr, "Invalid map: incorrect map size or shape\n");
+			d_log("CRI: Invalid map: incorrect map size or shape");
 			fclose(file);
 			return -1;
 		}
 		for (x = 0; x < level_width; x++) {
-			if (fill_cell(&(level[level_pos(x, y)]), buffer[x]) < 0) {
-				fprintf(stderr, "Invalid map: unknown cell\n");
+			if (fill_cell(&(level[d_level_pos(x, y)]), buffer[x]) < 0) {
+				d_log("CRI: Invalid map: unknown cell");
 				fclose(file);
 				return -1;
 			}
@@ -235,18 +246,18 @@ int d_weapon_activate(WEAPON* weapon, int x, int y) {
 						(y_use > level_height) || (y_use < 0)) {
 					continue;
 				}
-				if (level[level_pos(x_use, y_use)].representation ==
+				if (level[d_level_pos(x_use, y_use)].representation ==
 					ENTITY_WALL) {
 					continue;
 				}
 				for (i = 0; i < UNITS_PER_CELL_MAX; i++) {
-					if (level[level_pos(x_use, y_use)].units[i] == NULL) {
+					if (level[d_level_pos(x_use, y_use)].units[i] == NULL) {
 						break;
 					}
-					level[level_pos(x_use, y_use)].units[i] ->health -=
+					level[d_level_pos(x_use, y_use)].units[i] ->health -=
 							weapon ->damage;
-					if (level[level_pos(x_use, y_use)].units[i] ->health < 0) {
-						level[level_pos(x_use, y_use)].units[i] ->health = 0;
+					if (level[d_level_pos(x_use, y_use)].units[i] ->health < 0) {
+						level[d_level_pos(x_use, y_use)].units[i] ->health = 0;
 					}
 				}
 			}
@@ -258,8 +269,8 @@ int d_weapon_activate(WEAPON* weapon, int x, int y) {
 	
 	weapon ->charge -= 1;
 	if (weapon ->charge == 0) {
-		if (level[level_pos(x, y)].weapon.type != ENTITY_EMPTY) {
-			level[level_pos(x, y)].weapon.type = ENTITY_EMPTY;
+		if (level[d_level_pos(x, y)].weapon.type != ENTITY_EMPTY) {
+			level[d_level_pos(x, y)].weapon.type = ENTITY_EMPTY;
 		}
 	}
 	return 0;
@@ -284,14 +295,14 @@ int d_unit_move(UNIT* unit, int x, int y) {
 	if (unit ->next_action_tick < tick) {
 		return 2;
 	}
-	if (level[level_pos(x, y)].representation == ENTITY_WALL) {
+	if (level[d_level_pos(x, y)].representation == ENTITY_WALL) {
 		return 3;
 	}
 	
 	// Check if given cell has free space to hold a unit
 	int new_i;
 	for (new_i = 0; new_i < UNITS_PER_CELL_MAX; new_i++) {
-		if (level[level_pos(x, y)].units[new_i] == NULL) {
+		if (level[d_level_pos(x, y)].units[new_i] == NULL) {
 			break;
 		}
 	}
@@ -303,14 +314,14 @@ int d_unit_move(UNIT* unit, int x, int y) {
 	{
 		int prev_i;  // Player index at previous cell
 		for (prev_i = 0; prev_i < UNITS_PER_CELL_MAX; prev_i++) {
-			if (level[level_pos(unit ->x, unit ->y)].units[prev_i] == unit) {
+			if (level[d_level_pos(unit->x, unit->y)].units[prev_i] == unit) {
 				break;
 			}
 		}
 		
 		int prev_li;  // Last (another) player index at previous cell
 		for (prev_li = UNITS_PER_CELL_MAX - 1; prev_li >= 0; prev_li--) {
-			if (level[level_pos(unit ->x, unit ->y)].units[prev_li] != NULL) {
+			if (level[d_level_pos(unit->x, unit->y)].units[prev_li] != NULL) {
 				break;
 			}
 		}
@@ -320,22 +331,22 @@ int d_unit_move(UNIT* unit, int x, int y) {
 		}
 		
 		if (prev_li == prev_i) {  // Given unit is the last one
-			level[level_pos(unit ->x, unit ->y)].units[prev_i] = NULL;
+			level[d_level_pos(unit->x, unit->y)].units[prev_i] = NULL;
 		}
 		else {  // Make given unit the last one and then remove it
-			level[level_pos(unit ->x, unit ->y)].units[prev_i] =
-					level[level_pos(unit ->x, unit ->y)].units[prev_li];
-			level[level_pos(unit ->x, unit ->y)].units[prev_li] = NULL;
+			level[d_level_pos(unit->x, unit->y)].units[prev_i] =
+					level[d_level_pos(unit->x, unit->y)].units[prev_li];
+			level[d_level_pos(unit->x, unit->y)].units[prev_li] = NULL;
 		}
 		
-		level[level_pos(x, y)].units[new_i] = unit;
+		level[d_level_pos(x, y)].units[new_i] = unit;
 		unit ->x = x;
 		unit ->y = y;
 		unit ->next_action_tick = tick + unit ->move_delay;
 	}
 	
 	// Process side effects
-	d_weapon_activate(&(level[level_pos(x, y)].weapon), x, y);
+	d_weapon_activate(&(level[d_level_pos(x, y)].weapon), x, y);
 	if (unit ->health <= 0) {
 		unit ->health = 0;
 		return 1;
@@ -354,7 +365,7 @@ int d_unit_use_weapon(UNIT* unit) {
 	}
 	if ((unit ->weapon.type == ENTITY_EMPTY) ||
 		(unit ->next_action_tick > tick) ||
-		(level[level_pos(unit ->x, unit ->y)].weapon.type != ENTITY_EMPTY)) {
+		(level[d_level_pos(unit->x, unit->y)].weapon.type != ENTITY_EMPTY)) {
 		return 2;
 	}
 	if (unit ->weapon.charge <= 0) {
@@ -363,15 +374,15 @@ int d_unit_use_weapon(UNIT* unit) {
 	
 	switch (unit ->weapon.type) {
 		case ENTITY_BOMB:
-			level[level_pos(unit ->x, unit ->y)].weapon.type =
+			level[d_level_pos(unit->x, unit->y)].weapon.type =
 					unit ->weapon.type;
-			strcpy(level[level_pos(unit ->x, unit ->y)].weapon.name,
+			strcpy(level[d_level_pos(unit->x, unit->y)].weapon.name,
 				   unit ->weapon.name);
-			level[level_pos(unit ->x, unit ->y)].weapon.damage =
+			level[d_level_pos(unit->x, unit->y)].weapon.damage =
 					unit ->weapon.damage;
-			level[level_pos(unit ->x, unit ->y)].weapon.range =
+			level[d_level_pos(unit->x, unit->y)].weapon.range =
 					unit ->weapon.range;
-			level[level_pos(unit ->x, unit ->y)].weapon.charge =
+			level[d_level_pos(unit->x, unit->y)].weapon.charge =
 					1;
 			unit ->weapon.charge -= 1;
 			break;
@@ -392,6 +403,65 @@ int d_unit_use_weapon(UNIT* unit) {
 	}
 	
 	return 0;
+}
+
+
+
+
+int d_unit_get_position(int* x, int* y) {
+	srand((unsigned int)time(NULL));
+	int x_rand = rand() % ((level_width * 2) / 3);
+	int y_rand = rand() % (level_height - 1);
+	
+	int x_curr, y_curr;
+	int is_position_found = 0;
+	for (y_curr = y_rand; y_curr < level_height; y_curr++) {
+		for (x_curr = x_rand; x_curr < level_width; x_curr++) {
+			CELL* cell_ptr = level + d_level_pos(x_curr, y_curr);
+			if ((cell_ptr ->representation == ENTITY_EMPTY) &&
+					(cell_ptr ->units[0] == NULL) &&
+					(cell_ptr ->weapon.type == ENTITY_EMPTY)) {
+				*x = x_curr;
+				*y = y_curr;
+				is_position_found = 1;
+			}
+			if (is_position_found == 1) {
+				break;
+			}
+		}
+		if (is_position_found == 1) {
+			break;
+		}
+	}
+	
+	if (is_position_found == 1) {
+		return 0;
+	}
+	
+	for (y_curr = 0; y_curr < level_height; y_curr++) {
+		for (x_curr = 0; x_curr < level_width; x_curr++) {
+			CELL* cell_ptr = level + d_level_pos(x_curr, y_curr);
+			if ((cell_ptr ->representation == ENTITY_EMPTY) &&
+				(cell_ptr ->units[0] == NULL) &&
+				(cell_ptr ->weapon.type == ENTITY_EMPTY)) {
+				*x = x_curr;
+				*y = y_curr;
+				is_position_found = 1;
+			}
+			if (is_position_found == 1) {
+				break;
+			}
+		}
+		if (is_position_found == 1) {
+			break;
+		}
+	}
+	
+	if (is_position_found == 1) {
+		return 0;
+	}
+	
+	return -1;
 }
 
 
@@ -512,14 +582,14 @@ int d_unit_process_command(char cmd, UNIT* unit) {
 		unit ->health = 0;
 		int i;  // Dead unit position in level[...].units array
 		for (i = 0; i < UNITS_PER_CELL_MAX; i++) {
-			if (level[level_pos(unit ->x, unit ->y)].units[i] == unit) {
+			if (level[d_level_pos(unit->x, unit->y)].units[i] == unit) {
 				break;
 			}
 		}
 		
 		int i_last;  // Last unit position in level[...].units array
 		for (i_last = UNITS_PER_CELL_MAX - 1; i >= 0; i--) {
-			if (level[level_pos(unit ->x, unit ->y)].units[i_last] != NULL) {
+			if (level[d_level_pos(unit->x, unit->y)].units[i_last] != NULL) {
 				break;
 			}
 		}
@@ -529,12 +599,12 @@ int d_unit_process_command(char cmd, UNIT* unit) {
 		}
 		
 		if (i_last == i) {  // Dead unit is the last one
-			level[level_pos(unit ->x, unit ->y)].units[i] = NULL;
+			level[d_level_pos(unit->x, unit->y)].units[i] = NULL;
 		}
 		else {  // Make dead unit the last one and then remove it
-			level[level_pos(unit ->x, unit ->y)].units[i] =
-					level[level_pos(unit ->x, unit ->y)].units[i_last];
-			level[level_pos(unit ->x, unit ->y)].units[i_last] = NULL;
+			level[d_level_pos(unit->x, unit->y)].units[i] =
+					level[d_level_pos(unit->x, unit->y)].units[i_last];
+			level[d_level_pos(unit->x, unit->y)].units[i_last] = NULL;
 		}
 		
 		return 1;
@@ -558,13 +628,13 @@ int d_game_update(void) {
 	for (i = 0; i < units_total; i++) {
 		exec_result = d_unit_process_command(units_cmd[i], &(units[i]));
 		if (exec_result == 0) {
-			// Log action
+			// Todo: Log action
 		}
 		else if (exec_result > 0) {
-			// Log death
+			// Todo: Log death
 		}
 		else {
-			// Log error
+			// Todo: Log error
 		}
 		units_cmd[i] = CMD_NONE;
 	}

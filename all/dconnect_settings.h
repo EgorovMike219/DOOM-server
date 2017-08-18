@@ -6,14 +6,15 @@
 // ========================================================================== //
 
 // UPACK.type //
-#define DP_INFO 0
-#define DP_CONNECT 1
-#define DP_RECONNECT 2
+#define DP_NONE 0
+#define DP_SERVICE 1
+#define DP_CONNECT 2
+#define DP_RECONNECT 3
 
 #define DP_GAME 10
-#define DP_GAME_INFO 11
-#define DP_GAME_PREPARE 12
-#define DP_GAME_BEGIN 13
+#define DP_GAME_PREPARE 11
+#define DP_GAME_BEGIN 12
+#define DP_GAME_OVER 13
 
 #define DP_CLIENT_ACTION 20
 #define DP_CLIENT_STOP 21

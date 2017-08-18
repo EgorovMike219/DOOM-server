@@ -2,6 +2,7 @@ level_width = 35
 level_height = 15
 level_active_health_reduction = 5
 level_passive_health_reduction = 2
+level_passive_turns = 500
 
 heal_default.damage = -150
 heal_default.range = 1
