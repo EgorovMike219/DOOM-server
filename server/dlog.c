@@ -42,33 +42,62 @@ pthread_t logger_id;
  * @brief Thread function. Writes logs
  */
 void* logger(void* dummy) {
+	// Dummy-check
+	if (dummy != NULL) {
+		return NULL;
+	}
+	
 	struct msgbuf_log message;
 	
+	struct timeval raw_time;
+	struct tm parsed_time;
+	
+	fprintf(log_file_ptr, "\nLOGGING START\n\n");
+	
 	while (1) {
-		msgrcv(msqid_log, &message, LOG_MESSAGE_LENGTH, 0, MSG_NOERROR);
+		// Receive message. If an error occurs, do nothing
+		if (msgrcv(msqid_log,
+				   &message, LOG_MESSAGE_LENGTH, 0, MSG_NOERROR) < 0) {
+			errno = 0;
+			continue;
+		}
 		
+		// Thread stop
 		if (message.type == MES_LOG_STOP) {
 			break;
 		}
 		
+		// Print time
+		gettimeofday(&raw_time, NULL);
+		localtime_r(&raw_time.tv_sec, &parsed_time);
+		raw_time.tv_usec /= 1000;
+		fprintf(log_file_ptr, "[%02d:%02d:%02d.%03d] ",
+				parsed_time.tm_hour, parsed_time.tm_min, parsed_time.tm_sec,
+				(int)raw_time.tv_usec);
+		
+		// Print message and format
 		fprintf(log_file_ptr, "%s", message.text);
 		fprintf(log_file_ptr, "\n");
 	}
 	
-	return NULL;  // Equivalent to pthread_exit(NULL)
+	fprintf(log_file_ptr, "\nLOGGING END\n");
+	
+	return NULL;
 }
 
 
 
 
 int d_log_initialize(const char* log_file, char mode) {
+	// Checks
 	if (is_active == 1) {
 		return 0;
 	}
 	if (log_file == NULL) {
-		log_file = "./game.log";
+		return -1;
 	}
 	
+	// Open log file
 	if (mode == 'n') {
 		log_file_ptr = fopen(log_file, "w");
 	}
@@ -83,7 +112,14 @@ int d_log_initialize(const char* log_file, char mode) {
 		return -1;
 	}
 	
-	msqid_log = msgget(IPC_PRIVATE, 0);
+	// Check log file
+	if (log_file_ptr == NULL) {
+		errno = 0;
+		return -1;
+	}
+	
+	// Open message queue
+	msqid_log = msgget(IPC_PRIVATE, 0666);
 	if (msqid_log < 0) {
 		if (is_stderr == 0) {
 			fclose(log_file_ptr);
@@ -91,6 +127,7 @@ int d_log_initialize(const char* log_file, char mode) {
 		return -1;
 	}
 	
+	// Launch logger thread
 	if (pthread_create(&logger_id, NULL, logger, NULL) < 0) {
 		if (is_stderr == 0) {
 			fclose(log_file_ptr);
@@ -114,7 +151,6 @@ void d_log(const char* text) {
 	
 	strcpy(message.text, text);
 	message.type = MES_LOG_NORMAL;
-	
 	msgsnd(msqid_log, &message, LOG_MESSAGE_LENGTH, 0);
 }
 
@@ -123,9 +159,15 @@ void d_log(const char* text) {
 
 void d_log_close(void) {
 	struct msgbuf_log message;
+	
+	// Checks
+	if (is_active == 0) {
+		return;
+	}
+	
+	// Stop logger
 	message.type = MES_LOG_STOP;
 	msgsnd(msqid_log, &message, LOG_MESSAGE_LENGTH, 0);
-	
 	pthread_join(logger_id, NULL);
 	
 	if (is_stderr == 0) {

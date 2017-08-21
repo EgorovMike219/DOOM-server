@@ -8,20 +8,25 @@
 #include <stdint.h>  // Required for TICK_TYPE
 
 
-/// Maximum length of all names in the game
-#define NAME_LENGTH 4
+/// Maximum length of all names in the game (including /0)
+#define LENGTH_NAME 5
 
-/// Maximum length of game information (send via network)
-#define INFO_LENGTH 128
+/// Maximum length of a command send via network (including \0)
+#define LENGTH_NET_COMMAND (8 + 1)
+
+/// Maximum length of game information send via network (including \0)
+#define LENGTH_NET_INFO (4 + 1 + 2 + 1 + (LENGTH_NAME - 1) + 1 + 4 + 1 + LENGTH_NET_COMMAND)
 
 
 #define CLIENT_FIELD_HEIGHT 11
 
 #define CLIENT_FIELD_WIDTH 11
 
-#define CLIENT_FIELD_AREA CLIENT_FIELD_HEIGHT * CLIENT_FIELD_WIDTH
+#define CLIENT_FIELD_AREA (CLIENT_FIELD_HEIGHT * CLIENT_FIELD_WIDTH)
 
 
+/// Tick length (in seconds)
+#define TICK_LENGTH 0.500
 
 
 // ========================================================================== //
@@ -35,13 +40,13 @@
 #define ENTITY_ENEMY 'e'
 
 #define ENTITY_HEART '+'
-#define ENTITY_HEART_NAME ""
+#define ENTITY_HEART_NAME "HEAL"
 
 #define ENTITY_POISON '-'
-#define ENTITY_POISON_NAME ""
+#define ENTITY_POISON_NAME "DRUG"
 
 #define ENTITY_BOMB '*'
-#define ENTITY_BOMB_NAME ""
+#define ENTITY_BOMB_NAME "BOMB"
 
 
 // Player commands //

@@ -25,7 +25,7 @@
  */
 typedef struct Weapon_Entity_t {
 	char type;
-	char name[NAME_LENGTH];
+	char name[LENGTH_NAME];
 	int damage;
 	int range;
 	int charge;
@@ -41,7 +41,7 @@ typedef struct Weapon_Entity_t {
 typedef struct Unit_Entity_t {
 	int id;
 	char type;
-	char name[NAME_LENGTH];
+	char name[LENGTH_NAME];
 	
 	int x;
 	int y;
@@ -243,6 +243,7 @@ int d_game_refresh(void);
 
 /**
  * @brief Safely end the game processing
+ * @note Safe to call at any moment
  */
 void d_game_shutdown(void);
 

@@ -390,7 +390,7 @@ int d_server_get(int mode, void* data, size_t data_length,
 	struct sockaddr_in cli_addr;
 	socklen_t cli_addl = sizeof(struct sockaddr_in);
 
-	UPACK_HEAD* recieved = data;
+	UPACK_HEAD* received = data;
 
 	while (1) {
 		last_out_code = d_all_recvraw(data, data_length,
@@ -399,7 +399,7 @@ int d_server_get(int mode, void* data, size_t data_length,
 			return last_out_code;
 		}
 
-		if (recieved ->type == DP_GAME) {
+		if (received ->type == DP_GAME) {
 			// A server cannot get GAME datagrams, it only sends them
 			continue;
 		}
@@ -408,7 +408,7 @@ int d_server_get(int mode, void* data, size_t data_length,
 			break;
 		}
 		else if (mode == 1) {
-			if (recieved ->type == DP_CLIENT_ACTION) {
+			if (received ->type == DP_CLIENT_ACTION) {
 				continue;
 			}
 			else {

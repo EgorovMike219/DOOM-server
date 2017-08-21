@@ -3,6 +3,14 @@
 
 
 
+// Storage definitions (for safe 'd_game_shutdown' call at any time)
+CELL* level = NULL;
+UNIT* units = NULL;
+char* units_cmd = NULL;
+
+
+
+
 /**
  * @brief Helper function for 'd_level_load'
  *
@@ -115,7 +123,7 @@ int d_level_load(char *pathname) {
 		return -1;
 	}
 	
-	// Read settings
+	// Read settings //
 	
 	int temporary_holder;
 	
@@ -140,7 +148,7 @@ int d_level_load(char *pathname) {
 		return -1;
 	}
 	
-	fgetc(file);  // One empty line
+	fgetc(file);  // Empty line
 	
 	if (read_setting(file, &(heal_default.damage),
 					 "heal_default.damage") < 0) {
@@ -168,6 +176,8 @@ int d_level_load(char *pathname) {
 		return -1;
 	}
 	
+	bomb_default.type = ENTITY_BOMB;
+	strcpy(bomb_default.name, ENTITY_BOMB_NAME);
 	if (read_setting(file, &(bomb_default.damage),
 					 "bomb_default.damage") < 0) {
 		return -1;
@@ -185,12 +195,11 @@ int d_level_load(char *pathname) {
 		return -1;
 	}
 	bomb_default.delay = (TICK_TYPE)temporary_holder;
-	strcpy(bomb_default.name, "BOMB");
 	
-	fgetc(file);  // One empty line
-	fgetc(file);
+	fgetc(file);  // Empty line
+	fgetc(file);  // Empty line
 	
-	// Allocate memory and read cells
+	// Allocate memory and read cells //
 	
 	level = (CELL*)malloc(sizeof(CELL) * level_width * level_height);
 	if (level == NULL) {
@@ -237,13 +246,13 @@ int d_weapon_activate(WEAPON* weapon, int x, int y) {
 		int x_use, y_use;
 		int i;
 		for (y_use = (y - weapon ->range + 1);
-			 y_use < (y + weapon ->range - 1);
-			 y++) {
+			 y_use <= (y + weapon ->range - 1);
+			 y_use++) {
 			for (x_use = (x - weapon ->range + 1);
-				 x_use < (x + weapon ->range - 1);
-				 x++) {
-				if ((x_use > level_width) || (x_use < 0) ||
-						(y_use > level_height) || (y_use < 0)) {
+				 x_use <= (x + weapon ->range - 1);
+				 x_use++) {
+				if ((x_use >= level_width) || (x_use < 0) ||
+						(y_use >= level_height) || (y_use < 0)) {
 					continue;
 				}
 				if (level[d_level_pos(x_use, y_use)].representation ==
@@ -292,7 +301,7 @@ int d_unit_move(UNIT* unit, int x, int y) {
 	if (unit ->health <= 0) {
 		return 1;
 	}
-	if (unit ->next_action_tick < tick) {
+	if (unit ->next_action_tick > tick) {
 		return 2;
 	}
 	if (level[d_level_pos(x, y)].representation == ENTITY_WALL) {

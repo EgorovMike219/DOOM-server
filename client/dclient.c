@@ -1,4 +1,4 @@
-#define _GNU_SOURCE  // Non-standart function pthread_yield used
+#define _GNU_SOURCE  // Non-standart function pthread_yield() used
 
 #include <ncurses.h>
 #include <pthread.h>
@@ -94,9 +94,9 @@ chtype convert_symbol(char sym) {
 void display_game(UPACK_HEAD* pack_to_receive) {
 	if (tick % CLIENT_REDRAW_TICK_MODULE == 0) {
 		curses_define_screen_size();
-		bkgd(COLOR_PAIR(DISPLAY_BACKGROUND));
 		clear();
 		refresh();
+		// bkgd(COLOR_PAIR(DISPLAY_BACKGROUND));
 	}
 	
 	int height_start = screen_height_middle + 1
@@ -117,9 +117,9 @@ void display_game(UPACK_HEAD* pack_to_receive) {
 	
 	int health;
 	int health_percent;
-	char weapon_name[5];
+	char weapon_name[LENGTH_NAME];
 	int weapon_charge;
-	char command[INFO_LENGTH];
+	char command[LENGTH_NET_COMMAND];
 
 	
 	
@@ -192,7 +192,7 @@ void display_game(UPACK_HEAD* pack_to_receive) {
 	for (i = 0; i < health_percent; i++) {
 		printw("+");
 	}
-	for (i = health_percent; i < 11; i++) {
+	for (i = health_percent; i < 10; i++) {
 		printw(" ");
 	}
 	attroff(COLOR_PAIR(DISPLAY_ID_HEALTH));
@@ -206,6 +206,11 @@ void display_game(UPACK_HEAD* pack_to_receive) {
  * and calls display_game() each time new DP_GAME packet is received
  */
 void* receive_display_game(void* dummy) {
+	// Dummy-check
+	if (dummy != NULL) {
+		return NULL;
+	}
+	
 	UPACK_HEAD* pack_to_receive = make_UPACK(UDP_MAX_PACKET_SIZE);
 	short keep_receiving = 1;
 	
@@ -221,7 +226,7 @@ void* receive_display_game(void* dummy) {
 				display_game(pack_to_receive);
 				pthread_yield();
 				break;
-			case DP_CLIENT_STOP:
+			case DP_GAME_OVER:
 				keep_receiving = 0;
 				pthread_yield();
 				break;
@@ -378,7 +383,7 @@ int main() {
 	
 	// Client listening
 	UPACK_HEAD* pack_to_send = make_UPACK(1);
-	int client_input;
+	int client_input = ' ';
 	char client_command;
 	int failed_key;
 	
@@ -433,19 +438,17 @@ int main() {
 		}
 		if ((client_command == CMD_W) || (client_command == CMD_A)
 			|| (client_command == CMD_S) || (client_command == CMD_D)
-			|| (client_command == CMD_WEAPON)) {
+			|| (client_command == CMD_WEAPON) || (client_command == CMD_QUIT)) {
 			pack_to_send ->type = DP_CLIENT_ACTION;
 			pack_to_send ->data[0] = client_command;
-		}
-		else if (client_command == CMD_QUIT) {
-			pack_to_send ->type = DP_CLIENT_STOP;
 		}
 		
 		pack_to_send ->stamp = tick;
 		pack_to_send ->meta = id;
-		d_client_send(pack_to_send, UPACK_SIZE(1), NET_REPEAT_CLIENT);
+		d_client_send(pack_to_send, UPACK_SIZE(LENGTH_NET_COMMAND),
+					  NET_REPEAT_CLIENT);
 		
-		if (pack_to_send ->type == DP_CLIENT_STOP) {
+		if (pack_to_send ->data[0] == CMD_QUIT) {
 			break;
 		}
 		
