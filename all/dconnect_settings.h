@@ -30,6 +30,7 @@
 
 
 #define DP_MESSAGE 31
+#define SZ_PURE_MESSAGE 250 + 1
 
 
 

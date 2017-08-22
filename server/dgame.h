@@ -221,7 +221,7 @@ int d_unit_process_command(char cmd, UNIT* unit);
 
 
 /**
- * @brief Update game situation
+ * @brief Update game situation and write logs
  *
  * @return 0 if successful
  * @return -1 for errors
@@ -230,7 +230,7 @@ int d_game_update(void);
 
 
 /**
- * @brief Test if the game is over and increase 'tick' by 1 ONLY IF it is not
+ * @brief Test if the game is over and increase 'tick' by 1
  * @note This function does NOT update the game by calling 'd_game_update()'
  *
  * @return 0 if game should continue

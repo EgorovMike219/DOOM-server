@@ -13,7 +13,7 @@
 /// Message structure
 struct msgbuf_log {
 	long type;
-	char text[LOG_MESSAGE_LENGTH];
+	char text[LENGTH_LOG_MESSAGE];
 };
 
 
@@ -57,7 +57,7 @@ void* logger(void* dummy) {
 	while (1) {
 		// Receive message. If an error occurs, do nothing
 		if (msgrcv(msqid_log,
-				   &message, LOG_MESSAGE_LENGTH, 0, MSG_NOERROR) < 0) {
+				   &message, LENGTH_LOG_MESSAGE, 0, MSG_NOERROR) < 0) {
 			errno = 0;
 			continue;
 		}
@@ -151,7 +151,7 @@ void d_log(const char* text) {
 	
 	strcpy(message.text, text);
 	message.type = MES_LOG_NORMAL;
-	msgsnd(msqid_log, &message, LOG_MESSAGE_LENGTH, 0);
+	msgsnd(msqid_log, &message, LENGTH_LOG_MESSAGE, 0);
 }
 
 
@@ -167,7 +167,7 @@ void d_log_close(void) {
 	
 	// Stop logger
 	message.type = MES_LOG_STOP;
-	msgsnd(msqid_log, &message, LOG_MESSAGE_LENGTH, 0);
+	msgsnd(msqid_log, &message, LENGTH_LOG_MESSAGE, 0);
 	pthread_join(logger_id, NULL);
 	
 	if (is_stderr == 0) {

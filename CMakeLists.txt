@@ -17,6 +17,7 @@ set(SERVER_SOURCE_FILES
 		all/gamekey.h
 		all/dconnect_settings.h
 		server/dgame_settings.h
+		server/dserver_settings.h
 		
 		all/dconnect.c
 		server/dgame.c

@@ -626,6 +626,8 @@ int d_unit_process_command(char cmd, UNIT* unit) {
 
 
 int d_game_update(void) {
+	char log_message[LENGTH_LOG_MESSAGE];
+	
 	// Checks
 	if ((units_total <= 0) || (level == NULL) || (units == NULL)) {
 		return -1;
@@ -637,13 +639,50 @@ int d_game_update(void) {
 	for (i = 0; i < units_total; i++) {
 		exec_result = d_unit_process_command(units_cmd[i], &(units[i]));
 		if (exec_result == 0) {
-			// Todo: Log action
+			if (units_cmd[i] == CMD_WEAPON) {
+				sprintf(log_message,
+						"GAM: #%04d (%04d, %04d)\t used weapon",
+						i, units[i].x, units[i].y);
+				d_log(log_message);
+			}
+			else if (units_cmd[i] != CMD_NONE) {
+				sprintf(log_message,
+						"GAM: #%04d (%04d, %04d)\t moved",
+						i, units[i].x, units[i].y);
+				d_log(log_message);
+			}
 		}
 		else if (exec_result > 0) {
-			// Todo: Log death
+			if (units_cmd[i] == CMD_QUIT) {
+				sprintf(log_message,
+						"GAM: #%04d (%04d, %04d)\t quit",
+						i, units[i].x, units[i].y);
+				d_log(log_message);
+			}
+			else if (units_cmd[i] == CMD_WEAPON) {
+				sprintf(log_message,
+						"GAM: #%04d (%04d, %04d)\t used weapon and died",
+						i, units[i].x, units[i].y);
+				d_log(log_message);
+			}
+			else if (units_cmd[i] != CMD_NONE){
+				sprintf(log_message,
+						"GAM: #%04d (%04d, %04d)\t died in action",
+						i, units[i].x, units[i].y);
+				d_log(log_message);
+			}
+			else {
+				sprintf(log_message,
+						"GAM: #%04d (%04d, %04d)\t died of laziness",
+						i, units[i].x, units[i].y);
+				d_log(log_message);
+			}
 		}
 		else {
-			// Todo: Log error
+			sprintf(log_message,
+					"ERR: #%04d (%04d, %04d)\t caused a processing error",
+					i, units[i].x, units[i].y);
+			d_log(log_message);
 		}
 		units_cmd[i] = CMD_NONE;
 	}
@@ -692,10 +731,8 @@ int d_game_refresh(void) {
 		exit_code = -1;
 	}
 	
-	// Increase tick ONLY IF the game must continue
-	if (exit_code == 0) {
-		tick += 1;
-	}
+
+	tick += 1;
 	
 	return exit_code;
 }

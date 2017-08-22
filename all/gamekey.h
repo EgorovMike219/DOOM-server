@@ -26,7 +26,7 @@
 
 
 /// Tick length (in seconds)
-#define TICK_LENGTH 0.500
+#define TICK_LENGTH 0.300f
 
 
 // ========================================================================== //

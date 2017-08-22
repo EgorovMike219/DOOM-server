@@ -15,7 +15,7 @@
 
 
 /// Maximum allowed length of an error message
-#define LOG_MESSAGE_LENGTH 256
+#define LENGTH_LOG_MESSAGE 256
 
 
 

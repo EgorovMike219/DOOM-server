@@ -1,0 +1,32 @@
+level_width = 35
+level_height = 15
+level_active_health_reduction = 5
+level_passive_health_reduction = 2
+level_passive_turns = 500
+
+heal_default.damage = -150
+heal_default.range = 1
+heal_default.charge = 1
+poison_default.damage = 150
+poison_default.range = 1
+poison_default.charge = 1
+bomb_default.damage = 200
+bomb_default.range = 3
+bomb_default.charge = 100
+bomb_default.delay = 2
+
+###################################
+#   #+##           +              #
+# #    # ############## ######### #
+# ###### #   #+#   -  # ## ##   # #
+#          # # ###### # #     # # #
+###### # ### #      # # ## ##   # #
+##   # # # # #### # #   ##### # # #
+#+ #   # #      # ##+######+#   # #
+######## # ####    +    #   # # # #
+#   #    #      ####### # # #   # #
+# ### #### ######   -   # #   #   #
+#          #  +   ####### #########
+############ ######   # # #   #   #
+#        +          #   #   #   # #
+###################################

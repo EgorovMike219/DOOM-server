@@ -11,11 +11,10 @@
 
 #include "dgame.h"
 
+#include "dserver_settings.h"
 
 
 
-/// Maximum length of user interaction message
-#define LENGTH_IO_MESSAGE 1024
 
 /// Normal message type
 #define MES_INT_NORMAL 1
@@ -26,7 +25,7 @@
 /// IPC message buffer
 struct msgbuf_server {
 	long type;
-	char text[LENGTH_IO_MESSAGE];
+	char text[LENGTH_LOG_MESSAGE];
 };
 
 /// Message queue ID (private ownership)
@@ -88,18 +87,18 @@ void* interactor(void* dummy) {
 	
 	struct msgbuf_server message_get;
 	struct msgbuf_server message_send;
-	char command[LENGTH_IO_MESSAGE];
+	char command[LENGTH_LOG_MESSAGE];
 	int i;
 	
 	message_send.type = MES_INT_NORMAL;
 	
 	while (1) {
 		// Delay for the server to respond
-		d_all_delay(0.100);
+		d_all_delay(SERVER_DELAY_IO);
 		
 		// Receive and print all messages from "core"
 		while (msgrcv(msquid_server_out,
-					  &message_get, LENGTH_IO_MESSAGE, 0,
+					  &message_get, LENGTH_LOG_MESSAGE, 0,
 					  MSG_NOERROR | IPC_NOWAIT) > 0) {
 			if (message_get.type == MES_INT_STOP) {
 				pthread_exit(NULL);
@@ -110,7 +109,7 @@ void* interactor(void* dummy) {
 		
 		// Read command
 		printf(" > ");
-		fgets(command, LENGTH_IO_MESSAGE, stdin);
+		fgets(command, LENGTH_LOG_MESSAGE, stdin);
 		if (isspace((int)command[0]) != 0) {
 			continue;
 		}
@@ -129,13 +128,16 @@ void* interactor(void* dummy) {
 			printf(" *\x1B[1m status\x1B[0m\t Get actual information about the server\n");
 			printf(" *\x1B[1m exit  \x1B[0m\t Shut server down immediately\n");
 			printf("\nCommands available when waiting for players:\n");
+			printf(" *\x1B[1m msg <n> <message>\x1B[0m\t Send a message with a given ID to all connected players. ID (<n>) must be a 1-symbol 16-base number\n");
 			printf(" *\x1B[1m launch\x1B[0m\t Launch the game\n");
+			printf("\nCommands available during the game:\n");
+			printf(" *\x1B[1m kill <id>\x1B[0m\t Kill the unit with a given ID\n");
 			printf("\n");
 		}
 		else {
 			strcpy(message_send.text, command);
 			msgsnd(msquid_server_in,
-				   &message_send, LENGTH_IO_MESSAGE, 0);
+				   &message_send, LENGTH_LOG_MESSAGE, 0);
 		}
 		
 		if (strcmp(command, "exit") == 0) {
@@ -172,7 +174,7 @@ void* packs_in_processor(void* dummy) {
 	
 	UPACK_HEAD* holder;
 	
-	char log_message[LOG_MESSAGE_LENGTH];  // Temporary log message
+	char log_message[LENGTH_LOG_MESSAGE];  // Temporary log message
 	struct msgbuf_server message_out;  // Message for interactor
 	message_out.type = MES_INT_NORMAL;
 	
@@ -216,23 +218,36 @@ void* packs_in_processor(void* dummy) {
 				*holder = *received;
 				pthread_mutex_unlock(&packs_in_mutex);
 				break;
-			case DP_RECONNECT:
+			case DP_RECONNECT:  // Todo: Reconnect (resolve port conflict)
 				if (received ->stamp == DP_S_ASK) {
 					received ->stamp = DP_S_SUCCESS;
 					d_server_send(received, UPACK_SIZE(1),
 								  received_hr, NET_REPEAT_SERVER);
 					sprintf(log_message,
-							"ACT: Reconnected client %s:%d; id %d",
-							received_hr.ip, received_hr.port, received ->meta);
+							"ACT: Reconnected client #%d (%s:%d)",
+							received ->meta, received_hr.ip, received_hr.port);
 					d_log(log_message);
 					strcpy(message_out.text, log_message);
 					msgsnd(msquid_server_out,
-						   &message_out, LENGTH_IO_MESSAGE, IPC_NOWAIT);
+						   &message_out, LENGTH_LOG_MESSAGE, IPC_NOWAIT);
 					errno = 0;
 				}
 				else {
 					continue;
 				}
+				break;
+			case DP_CONNECT:
+				received ->stamp = DP_S_ERROR;
+				d_server_send(received, UPACK_SIZE(1),
+							  received_hr, NET_REPEAT_SERVER);
+				sprintf(log_message,
+						"ACT: Connect request from %s:%d (refused)",
+						received_hr.ip, received_hr.port);
+				d_log(log_message);
+				strcpy(message_out.text, log_message);
+				msgsnd(msquid_server_out,
+					   &message_out, LENGTH_LOG_MESSAGE, IPC_NOWAIT);
+				errno = 0;
 				break;
 			default:
 				continue;
@@ -333,7 +348,6 @@ void print_help(void) {
 	
 	printf("\x1B[4mNotes\x1B[0m:\n");
 	printf("\t\"stderr\" may be used as log file (not recommended)\n");
-	printf("\tIf player number limit is much more than ~100, the game may significantly slow down\n");
 	
 	printf("\n");
 }
@@ -351,7 +365,7 @@ void server_shutdown(void) {
 	if (interactor_id != 0) {
 		struct msgbuf_server message;
 		message.type = MES_INT_STOP;
-		msgsnd(msquid_server_out, &message, LENGTH_IO_MESSAGE, 0);
+		msgsnd(msquid_server_out, &message, LENGTH_LOG_MESSAGE, 0);
 		
 		pthread_join(interactor_id, NULL);
 	}
@@ -395,7 +409,7 @@ void server_shutdown(void) {
 
 
 int main(int argc, char** argv) {
-	char log_message[LOG_MESSAGE_LENGTH];  // Temporary log message
+	char log_message[LENGTH_LOG_MESSAGE];  // Temporary log message
 	
 	struct msgbuf_server message_in;  // Message from interactor
 	struct msgbuf_server message_out;  // Message for interactor
@@ -403,6 +417,12 @@ int main(int argc, char** argv) {
 	
 	HR_ADDRESS current_hr;  // HR holder
 	UPACK_HEAD* current_pack = make_UPACK(UDP_MAX_PACKET_SIZE); // Packet holder
+	
+	char client_message[LENGTH_NET_COMMAND];
+	
+	struct timeval time_now;  // Current time
+	struct timeval time_last_update;  // Time at last time check
+	double interval_time;  // Time (in seconds) since last time check
 	
 	
 	// Process command line arguments and set parameters //
@@ -517,6 +537,20 @@ int main(int argc, char** argv) {
 			return -1;
 		}
 		
+		// Allocate units
+		if ((units = malloc(sizeof(UNIT) * players_total)) == NULL) {
+			d_log("CRI: Units database allocation unsuccessful");
+			server_shutdown();
+			free(current_pack);
+			return -1;
+		}
+		if ((units_cmd = malloc((size_t)players_total)) == NULL) {
+			d_log("CRI: Units' commands database allocation unsuccessful");
+			server_shutdown();
+			free(current_pack);
+			return -1;
+		}
+		
 		// Connect to network
 		if (d_all_connect(0) < 0) {
 			d_log("CRI: Cannot create connection");
@@ -552,7 +586,7 @@ int main(int argc, char** argv) {
 		d_log(log_message);
 		strcpy(message_out.text, log_message);
 		msgsnd(msquid_server_out,
-			   &message_out, LENGTH_IO_MESSAGE, IPC_NOWAIT);
+			   &message_out, LENGTH_LOG_MESSAGE, IPC_NOWAIT);
 		
 		free(map_file);
 		free(log_file);
@@ -560,6 +594,8 @@ int main(int argc, char** argv) {
 	
 	// Connect clients //
 	
+	// Todo: Enable all unit capabilities (e.g. name)
+	// Todo: Add DP_RECONNECT processing
 	{
 		int get_res;  // Packet send result
 		
@@ -568,7 +604,7 @@ int main(int argc, char** argv) {
 		while (1) {
 			// Get command from interactor
 			if (msgrcv(msquid_server_in,
-					   &message_in, LENGTH_IO_MESSAGE, 0,
+					   &message_in, LENGTH_LOG_MESSAGE, 0,
 					   MSG_NOERROR | IPC_NOWAIT) < 0) {
 				// No commands
 				errno = 0;
@@ -576,6 +612,32 @@ int main(int argc, char** argv) {
 			else {
 				if (strcmp(message_in.text, "launch") == 0) {
 					break;
+				}
+				if (strncmp(message_in.text, "msg", 3) == 0) {
+					current_pack ->type = DP_MESSAGE;
+					current_pack ->meta = (int)strtol(message_in.text + 4, NULL,
+													  16);
+					if ((current_pack ->meta < 0) ||
+							(current_pack ->meta > 16)) {  // Only 1-symbol base-16 meta allowed
+						continue;
+					}
+					strncpy(current_pack ->data, (message_in.text + 6),
+							SZ_PURE_MESSAGE);
+					
+					int i;
+					for (i = 0; i < units_total; i++) {
+						d_server_send(current_pack, UPACK_SIZE(SZ_PURE_MESSAGE),
+									  hr_database[i], NET_REPEAT_SERVER);
+					}
+					
+					sprintf(log_message,
+							"ACT: Message (%d) sent: %s",
+							current_pack ->meta, current_pack ->data);
+					d_log(log_message);
+					strcpy(message_out.text, log_message);
+					msgsnd(msquid_server_out,
+						   &message_out, LENGTH_LOG_MESSAGE, IPC_NOWAIT);
+					errno = 0;
 				}
 				if (strcmp(message_in.text, "exit") == 0) {
 					server_shutdown();
@@ -587,7 +649,7 @@ int main(int argc, char** argv) {
 							"Waiting for players (%d/%d)",
 							units_total, players_total);
 					msgsnd(msquid_server_out,
-						   &message_out, LENGTH_IO_MESSAGE, IPC_NOWAIT);
+						   &message_out, LENGTH_LOG_MESSAGE, IPC_NOWAIT);
 				}
 				continue;
 			}
@@ -642,17 +704,17 @@ int main(int argc, char** argv) {
 				
 				// Log
 				sprintf(log_message,
-						"ACT: Connected client %s:%d; id %d",
-						current_hr.ip, current_hr.port, i);
+						"ACT: Connected client #%04d (%s:%d)",
+						i, current_hr.ip, current_hr.port);
 				d_log(log_message);
 				strcpy(message_out.text, log_message);
 				msgsnd(msquid_server_out,
-					   &message_out, LENGTH_IO_MESSAGE, IPC_NOWAIT);
+					   &message_out, LENGTH_LOG_MESSAGE, IPC_NOWAIT);
 				errno = 0;
 				continue;
 			}
 			
-			// Reconnect request Todo (not working: invalid client port)
+			// Reconnect request
 			if ((current_pack ->type == DP_RECONNECT) &&
 				(current_pack ->stamp == DP_S_ASK)) {
 				// Check whether this client already exists
@@ -668,6 +730,14 @@ int main(int argc, char** argv) {
 					current_pack ->stamp = DP_S_ERROR;
 					d_server_send(current_pack, UPACK_SIZE(1),
 								  current_hr, NET_REPEAT_SERVER);
+					sprintf(log_message,
+							"ACT: Reconnect request from %s:%d refused",
+							current_hr.ip, current_hr.port);
+					d_log(log_message);
+					strcpy(message_out.text, log_message);
+					msgsnd(msquid_server_out,
+						   &message_out, LENGTH_LOG_MESSAGE, IPC_NOWAIT);
+					errno = 0;
 					continue;
 				}
 				
@@ -678,12 +748,12 @@ int main(int argc, char** argv) {
 				
 				// Log
 				sprintf(log_message,
-						"ACT: Reconnected client %s:%d; id %d",
-						current_hr.ip, current_hr.port, i);
+						"ACT: Reconnected client #%04d (%s:%d)",
+						i, current_hr.ip, current_hr.port);
 				d_log(log_message);
 				strcpy(message_out.text, log_message);
 				msgsnd(msquid_server_out,
-					   &message_out, LENGTH_IO_MESSAGE, IPC_NOWAIT);
+					   &message_out, LENGTH_LOG_MESSAGE, IPC_NOWAIT);
 				errno = 0;
 			}
 		}
@@ -702,14 +772,14 @@ int main(int argc, char** argv) {
 		// Extra actions should be placed here for NPC addition //
 		
 		// Allocate buffers
-		if ((units = malloc(sizeof(UNIT) * units_total)) == NULL) {
-			d_log("CRI: Units database allocation unsuccessful");
+		if ((units = realloc(units, sizeof(UNIT) * units_total)) == NULL) {
+			d_log("CRI: Units database reallocation unsuccessful");
 			server_shutdown();
 			free(current_pack);
 			return -1;
 		}
-		if ((units_cmd = malloc((size_t)units_total)) == NULL) {
-			d_log("CRI: Units' commands database allocation unsuccessful");
+		if ((units_cmd = realloc(units_cmd, (size_t)units_total)) == NULL) {
+			d_log("CRI: Units' commands database reallocation unsuccessful");
 			server_shutdown();
 			free(current_pack);
 			return -1;
@@ -777,7 +847,6 @@ int main(int argc, char** argv) {
 	
 	// Launch the game //
 	
-	// Todo: Modify this part to enable all unit-related capabilities
 	{
 		int i;
 		
@@ -807,17 +876,37 @@ int main(int argc, char** argv) {
 			level[d_level_pos(units[i].x, units[i].y)].units[0] = &units[i];
 		}
 		
-		d_all_delay(5.000);
-		
-		// Check and clear server commands
-		while (msgrcv(msquid_server_in,
-				   &message_in, LENGTH_IO_MESSAGE, 0,
-				   MSG_NOERROR | IPC_NOWAIT) >= 0) {
-			if (strcmp(message_in.text, "exit") == 0) {
-				d_log("ACT: \"exit\" command received");
-				server_shutdown();
-				free(current_pack);
-				return -1;
+		// Delay, allowing players to prepare for the game
+		gettimeofday(&time_last_update, NULL);
+		while (1) {
+			// Process commands from interactor
+			while (msgrcv(msquid_server_in,
+						  &message_in, LENGTH_LOG_MESSAGE, 0,
+						  MSG_NOERROR | IPC_NOWAIT) >= 0) {
+				if (strcmp(message_in.text, "exit") == 0) {
+					d_log("ACT: \"exit\" command received");
+					server_shutdown();
+					free(current_pack);
+					return -1;
+				}
+				if (strcmp(message_in.text, "status") == 0) {
+					sprintf(message_out.text,
+							"Game is starting");
+					msgsnd(msquid_server_out,
+						   &message_out, LENGTH_LOG_MESSAGE, IPC_NOWAIT);
+				}
+			}
+			
+			// Calculate time interval and start next tick if necessary
+			if (gettimeofday(&(time_now), NULL) < 0) {
+				break;
+			}
+			interval_time = (double)(time_now.tv_sec - time_last_update.tv_sec);
+			interval_time += ((double)(time_now.tv_usec -
+									   time_last_update.tv_usec)) / 1000000.0;
+			if (SERVER_DELAY_PREPARE - interval_time < 0.0001) {
+				time_last_update = time_now;
+				break;
 			}
 		}
 		errno = 0;
@@ -832,48 +921,80 @@ int main(int argc, char** argv) {
 			d_server_send(current_pack, UPACK_SIZE(1),
 						  hr_database[i], NET_REPEAT_SERVER);
 		}
-		d_all_delay(1.000);
+		d_all_delay(SERVER_DELAY_BEGIN);
 	}
 	
 	// Game process //
+	
 	sprintf(log_message, "ACT: Game starts");
 	d_log(log_message);
 	strcpy(message_out.text, log_message);
 	msgsnd(msquid_server_out,
-		   &message_out, LENGTH_IO_MESSAGE, IPC_NOWAIT);
+		   &message_out, LENGTH_LOG_MESSAGE, IPC_NOWAIT);
 	errno = 0;
-	
-	struct timeval time_now;
-	struct timeval time_last_update;  // Time before last game update
-	time_last_update.tv_sec = 0;
-	time_last_update.tv_usec = 0;
-	double interval_time;  // Time (in seconds) since last game update
 	
 	int is_game_over = 0;
 	
 	int i;
 	UPACK_HEAD* current;  // Pointer to current in/out packet
 	
-	int refresh_result;
+	int refresh_result = -1;
+	int players_dead = 0;
 	
 	int x;
 	int y;
 	int j;
 	int health_percent;
-	char command[LENGTH_NET_COMMAND];
+	
+	HR_ADDRESS winner_hr;
+	int winner_id = -1;
 	
 	while (1) {
+		sprintf(log_message, "ACT: Tick %lu",
+				tick);
+		d_log(log_message);
+		
 		while (1) {
 			// Process console commands
 			while (msgrcv(msquid_server_in,
-						  &message_in, LENGTH_IO_MESSAGE, 0,
+						  &message_in, LENGTH_LOG_MESSAGE, 0,
 						  MSG_NOERROR | IPC_NOWAIT) >= 0) {
 				if (strcmp(message_in.text, "exit") == 0) {
 					d_log("ACT: \"exit\" command received");
 					is_game_over = 1;
 					break;
 				}
-				// Todo: Other options
+				if (strcmp(message_in.text, "status") == 0) {
+					sprintf(message_out.text,
+							"Game is on (tick %05lu); Players: %d/%d",
+							tick, players_total - players_dead, players_total);
+					msgsnd(msquid_server_out,
+						   &message_out, LENGTH_LOG_MESSAGE, IPC_NOWAIT);
+				}
+				if (strncmp(message_in.text, "kill", 4) == 0) {
+					int kick_id;
+					char kick_str[5];
+					sscanf(message_in.text + 5, "%s", kick_str);
+					kick_id = (int)strtol(kick_str, NULL, 10);
+					if ((errno == ERANGE) ||
+							(kick_id < 0) || (kick_id > units_total)) {
+						sprintf(message_out.text,
+								"No such unit. Use valid unit ID");
+						msgsnd(msquid_server_out,
+							   &message_out, LENGTH_LOG_MESSAGE, IPC_NOWAIT);
+						errno = 0;
+						continue;
+					}
+					units[kick_id].health = 0;
+					sprintf(log_message,
+							"GAM: #%04d killed by command",
+							kick_id);
+					d_log(log_message);
+					strcpy(message_out.text, log_message);
+					msgsnd(msquid_server_out,
+						   &message_out, LENGTH_LOG_MESSAGE, IPC_NOWAIT);
+					errno = 0;
+				}
 			}
 			
 			// Get time and check game over
@@ -916,12 +1037,12 @@ int main(int argc, char** argv) {
 		// Update game situation
 		if (d_game_update() < 0) {
 			sprintf(log_message,
-					"ERR: Game update failed at tick %llu",
-					(unsigned long long)tick);
+					"ERR: Game update failed at tick %lu",
+					tick);
 			d_log(log_message);
 			strcpy(message_out.text, log_message);
 			msgsnd(msquid_server_out,
-				   &message_out, LENGTH_IO_MESSAGE, IPC_NOWAIT);
+				   &message_out, LENGTH_LOG_MESSAGE, IPC_NOWAIT);
 			errno = 0;
 		}
 		
@@ -929,12 +1050,12 @@ int main(int argc, char** argv) {
 		refresh_result = d_game_refresh();
 		if (refresh_result < -1) {
 			sprintf(log_message,
-					"ERR: Game check failed at tick %llu",
-					(unsigned long long)tick);
+					"ERR: Game check failed at tick %lu",
+					tick);
 			d_log(log_message);
 			strcpy(message_out.text, log_message);
 			msgsnd(msquid_server_out,
-				   &message_out, LENGTH_IO_MESSAGE, IPC_NOWAIT);
+				   &message_out, LENGTH_LOG_MESSAGE, IPC_NOWAIT);
 			errno = 0;
 		}
 		
@@ -978,15 +1099,17 @@ int main(int argc, char** argv) {
 			
 			if ((units[i].health <= 0) || (refresh_result < 0)) {
 				current ->type = DP_GAME_OVER;
-				strcpy(command, "lose");
+				strcpy(client_message, "lose");
 			}
 			else if (refresh_result > 0) {
 				current ->type = DP_GAME_OVER;
-				strcpy(command, "win");
+				strcpy(client_message, "win");
+				winner_hr = hr_database[i];
+				winner_id = i;
 			}
 			else {
 				current ->type = DP_GAME;
-				strcpy(command, "        ");  // Default command initializer
+				strcpy(client_message, " ");  // Default initializer
 			}
 			
 			health_percent = (int)ceil(
@@ -994,7 +1117,7 @@ int main(int argc, char** argv) {
 						(float)units[i].health /
 						(float)(level_passive_health_reduction *
 								level_passive_turns)
-					) * 10.0
+					) * 11.0
 			);
 			
 			sprintf(current ->data + CLIENT_FIELD_AREA,
@@ -1003,7 +1126,7 @@ int main(int argc, char** argv) {
 					health_percent,
 					units[i].weapon.name,
 					units[i].weapon.charge,
-					command);
+					client_message);
 			
 			current = (void*)current + SZ_GAME;
 		}
@@ -1012,15 +1135,21 @@ int main(int argc, char** argv) {
 		pthread_mutex_unlock(&packs_out_mutex);
 		pthread_cond_broadcast(&packs_out_cond);
 		
-		sprintf(log_message, "ACT: Turn %llu completed",
-				(long long unsigned)tick);
-		d_log(log_message);
-		
 		if (refresh_result != 0) {
 			break;
 		}
 	}
-	d_log("ACT: Game ended");
+	
+	if (refresh_result > 0) {
+		sprintf(log_message, "ACT: Game ended. Winner is #%04d (%s:%d).",
+				winner_id, winner_hr.ip, winner_hr.port);
+	}
+	else {
+		sprintf(log_message, "ACT: Game ended with no winners.");
+	}
+	d_log(log_message);
+	strcpy(message_out.text, log_message);
+	msgsnd(msquid_server_out, &message_out, LENGTH_LOG_MESSAGE, 0);
 	
 	server_shutdown();
 	free(current_pack);

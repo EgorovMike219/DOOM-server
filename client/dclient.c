@@ -25,11 +25,18 @@ int screen_width_middle;
 int screen_height_middle;
 
 
+/// This client ID on server
+int id;
+
+
 /// In-game time
 TICK_TYPE tick;
 
-/// This client ID on server
-int id;
+pthread_mutex_t tick_mutex;
+
+
+/// Packet received during the game. @note Allocated by receiver
+UPACK_HEAD* pack_shared;
 
 
 /// receive_game_info thread
@@ -94,9 +101,6 @@ chtype convert_symbol(char sym) {
 void display_game(UPACK_HEAD* pack_to_receive) {
 	if (tick % CLIENT_REDRAW_TICK_MODULE == 0) {
 		curses_define_screen_size();
-		clear();
-		refresh();
-		// bkgd(COLOR_PAIR(DISPLAY_BACKGROUND));
 	}
 	
 	int height_start = screen_height_middle + 1
@@ -121,7 +125,6 @@ void display_game(UPACK_HEAD* pack_to_receive) {
 	int weapon_charge;
 	char command[LENGTH_NET_COMMAND];
 
-	
 	
 	// Draw borders
 	attron(COLOR_PAIR(DISPLAY_ID_BORDER));
@@ -166,38 +169,38 @@ void display_game(UPACK_HEAD* pack_to_receive) {
 	
 	move(height_start, width_field_start);
 	printw("%s", weapon_name);
-	move(height_start, width_field_start + 6);
-	printw("TICK");
-	
 	move(height_start + 1, width_field_start);
 	printw("%04d", weapon_charge);
-	move(height_start + 1, width_field_start + 6);
+	
+	move(height_start, width_field_start + 7);
+	printw("TICK");
+	move(height_start + 1, width_field_start + 7);
 	printw("%04d", (int)(tick % 10000));
 	
-	move(height_start + 2, width_field_start + 1);
-	printw("HP     HP");
+	move(height_start + 2, width_field_start);
+	printw("HP       HP");
+	attroff(COLOR_PAIR(DISPLAY_ID_INFO));
+	
+	attron(COLOR_PAIR(DISPLAY_ID_HEALTH));
 	move(height_start + 2, width_field_start + 3);
 	printw("%05d", health);
-	
 	move(height_start + 3, width_field_start);
-	printw(">");
+	for (i = 0; i < health_percent && i < 11; i++) {
+		printw("+");
+	}
+	for (i = health_percent; i < 11; i++) {
+		printw(" ");
+	}
+	attroff(COLOR_PAIR(DISPLAY_ID_HEALTH));
 	
+	attron(COLOR_PAIR(DISPLAY_BACKGROUND));
 	move(height_field_start + CLIENT_FIELD_HEIGHT + CLIENT_FIELD_BORDER,
 		 width_field_start + 1);
 	printw("DOOM-0592");
 	attroff(COLOR_PAIR(DISPLAY_ID_INFO));
 	
-	attron(COLOR_PAIR(DISPLAY_ID_HEALTH));
-	move(height_start + 3, width_field_start + 1);
-	for (i = 0; i < health_percent; i++) {
-		printw("+");
-	}
-	for (i = health_percent; i < 10; i++) {
-		printw(" ");
-	}
-	attroff(COLOR_PAIR(DISPLAY_ID_HEALTH));
-	
 	refresh();
+	redrawwin(stdscr);
 }
 
 
@@ -211,32 +214,35 @@ void* receive_display_game(void* dummy) {
 		return NULL;
 	}
 	
-	UPACK_HEAD* pack_to_receive = make_UPACK(UDP_MAX_PACKET_SIZE);
-	short keep_receiving = 1;
+	pack_shared = make_UPACK(UDP_MAX_PACKET_SIZE);
+	int keep_receiving = 1;
 	
-	while (keep_receiving) {
-		if (d_client_get(pack_to_receive, UPACK_SIZE(UDP_MAX_PACKET_SIZE),
+	while (keep_receiving == 1) {
+		if (d_client_get(pack_shared, UPACK_SIZE(UDP_MAX_PACKET_SIZE),
 						 tick) < 0) {
 			pthread_yield();
 			continue;
 		}
-		switch(pack_to_receive ->type) {
+		switch(pack_shared ->type) {
 			case DP_GAME:
-				tick = pack_to_receive ->stamp + 1;
-				display_game(pack_to_receive);
+				pthread_mutex_lock(&tick_mutex);
+				tick = pack_shared ->stamp + 1;
+				display_game(pack_shared);
+				pthread_mutex_unlock(&tick_mutex);
 				pthread_yield();
 				break;
 			case DP_GAME_OVER:
 				keep_receiving = 0;
-				pthread_yield();
+				pthread_mutex_lock(&tick_mutex);
+				tick = 0;
+				pthread_mutex_unlock(&tick_mutex);
 				break;
 			default:
 				continue;
 		}
 	}
 	
-	free(pack_to_receive);
-	pthread_exit(NULL);
+	return NULL;
 }
 
 
@@ -258,7 +264,7 @@ int main() {
 		init_pair(DISPLAY_BACKGROUND, COLOR_WHITE, COLOR_BLACK);
 		init_pair(DISPLAY_ID_BORDER, COLOR_YELLOW, COLOR_YELLOW);
 		init_pair(DISPLAY_ID_FIELD, COLOR_WHITE, COLOR_BLACK);
-		init_pair(DISPLAY_ID_INFO, COLOR_BLACK, COLOR_YELLOW);
+		init_pair(DISPLAY_ID_INFO, COLOR_WHITE, COLOR_BLUE);
 		init_pair(DISPLAY_ID_HEALTH, COLOR_RED, COLOR_WHITE);
 		
 		bkgd(COLOR_PAIR(DISPLAY_BACKGROUND));
@@ -276,7 +282,7 @@ int main() {
 			curses_printw_in_middle(screen_height_middle,
 									"Connection fatal error");
 			refresh();
-			d_all_delay(5.000);
+			d_all_delay(CLIENT_DELAY);
 			endwin();
 			return -1;
 		}
@@ -287,29 +293,16 @@ int main() {
 								"\b\b\bServer IP: ");
 		refresh();
 		scanw("%s", server.ip);
+		curs_set(0);
 		clear();
+		
 		server.port = NET_PORT;
 		
-		curses_printw_in_middle(screen_height_middle,
-								"New game? [y/n] ");
-		refresh();
-		scanw("%c", &response_newgame);
-		clear();
-		refresh();
-		
-		int d_client_connect_result;
-		if ((response_newgame == 'n') || (response_newgame == 'N')) {
-			d_client_connect_result = d_client_connect(server, 1);
-		}
-		else {
-			d_client_connect_result = d_client_connect(server, 0);
-		}
-		if (d_client_connect_result < 0) {
-			clear();
+		if (d_client_connect(server, 0) < 0) {
 			curses_printw_in_middle(screen_height_middle,
 									"Connection failure");
 			refresh();
-			d_all_delay(5.000);
+			d_all_delay(CLIENT_DELAY);
 			endwin();
 			return -1;
 		}
@@ -319,12 +312,10 @@ int main() {
 	{
 		UPACK_HEAD* pack_to_receive = make_UPACK(UDP_MAX_PACKET_SIZE);
 		
-		curs_set(0);
-		
 		curses_printw_in_middle(screen_height_middle,
 								"Please wait for other players.");
-		curses_printw_in_middle(screen_height_middle + 1,
-								"MESSAGES: ");
+		mvprintw(screen_height_middle + 1, 0,
+				 "     MESSAGES FROM SERVER:");
 		refresh();
 		
 		while (1) {
@@ -334,9 +325,10 @@ int main() {
 			}
 			
 			if (pack_to_receive ->type == DP_MESSAGE) {
-				mvprintw(screen_height_middle + 2 +
-								 (int)(pack_to_receive ->stamp), 0,
-						 "%s%s", "   * ", pack_to_receive ->data);
+				move(screen_height_middle + 2 + (int)(pack_to_receive ->meta),
+					 0);
+				clrtoeol();
+				printw("%s%s", "   * ", pack_to_receive ->data);
 				refresh();
 			}
 			else if ((pack_to_receive ->type == DP_GAME_PREPARE) ||
@@ -367,13 +359,14 @@ int main() {
 		noecho();
 		
 		tick = 1;
+		pthread_mutex_init(&tick_mutex, NULL);
 		
 		// Create thread to receive data from server
 		if (pthread_create(&receiver_id, NULL, &receive_display_game, NULL) != 0) {
 			curses_printw_in_middle(screen_height_middle,
 									"Thread create error");
 			refresh();
-			d_all_delay(2.500);
+			d_all_delay(CLIENT_DELAY);
 			endwin();
 			return -1;
 		}
@@ -382,7 +375,9 @@ int main() {
 	}
 	
 	// Client listening
-	UPACK_HEAD* pack_to_send = make_UPACK(1);
+	UPACK_HEAD* pack_to_send = make_UPACK(SZ_CLIENT_ACTION);
+	pack_to_send ->meta = id;
+	
 	int client_input = ' ';
 	char client_command;
 	int failed_key;
@@ -443,8 +438,14 @@ int main() {
 			pack_to_send ->data[0] = client_command;
 		}
 		
+		pthread_mutex_lock(&tick_mutex);
 		pack_to_send ->stamp = tick;
-		pack_to_send ->meta = id;
+		pthread_mutex_unlock(&tick_mutex);
+		
+		if (pack_to_send ->stamp == 0) {
+			break;
+		}
+		
 		d_client_send(pack_to_send, UPACK_SIZE(LENGTH_NET_COMMAND),
 					  NET_REPEAT_CLIENT);
 		
@@ -460,21 +461,32 @@ int main() {
 	// Join receiver
 	pthread_join(receiver_id, NULL);
 	
-	// End game
+	// Return to normal terminal mode
 	nocbreak();
 	nodelay(stdscr, false);
 	keypad(stdscr, false);
 	echo();
-	
-	
-	
 	clear();
 	refresh();
-	curses_printw_in_middle(screen_height_middle,
-							"Game ended. Thanks for playing!");
+	
+	//
+	char command[LENGTH_NET_COMMAND];
+	strcpy(command, (char*)pack_shared + (SZ_GAME - LENGTH_NET_COMMAND));
+	if (strcmp(command, "win") == 0) {
+		curses_printw_in_middle(screen_height_middle,
+								"*** Congratulations! You are the champion! ***");
+	}
+	else if (strcmp(command, "lose") == 0) {
+		curses_printw_in_middle(screen_height_middle,
+								"Unfortunately, you have lost :-(");
+	}
+	curses_printw_in_middle(screen_height_middle + 1,
+							"Thank you for playing!");
 	refresh();
-	d_all_delay(10.000);
+	
+	d_all_delay(CLIENT_DELAY * 2.0f);
 	endwin();
+	
 	return 0;
 }
 
