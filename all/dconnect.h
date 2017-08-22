@@ -14,14 +14,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "gamekey.h"
 #include "dconnect_settings.h"
-
-// TODO: Remove from this file
-#define TICK_TYPE uint64_t
-
-
-
-
 
 
 
@@ -31,7 +25,7 @@
 // ========================================================================== //
 
 /**
- * Human-readable client address
+ * @brief Human-readable client address
  *
  * @note 'port' is stored in local byte order
  */
@@ -42,23 +36,42 @@ typedef struct All_Net_clientaddr_t {
 
 
 /**
- * Universal packet header
+ * @brief Compare two HR_ADDRESSes
  *
- * @var type: packet type and operation it performs. Use predefined constants!
- * @var stamp: meta-information about this packet
- * @var data
+ * @param a
+ * @param b
+ *
+ * @return 0 if HR_ADDRESSes are equal
+ * @return -1 if HR_ADDRESSes are NOT equal
+ */
+int d_compare_hr(const HR_ADDRESS *a, const HR_ADDRESS *b);
+
+
+
+
+/**
+ * @brief Universal packet header
  */
 typedef struct All_Net_packheader_t {
-	int16_t type;
-	TICK_TYPE stamp;
+	/// Packet type and operation it performs. Use predefined constants!
+	int32_t type;
+	/// Meta-information
+	int32_t meta;
+	/// Tick signature (also used as meta-information sometimes)
+	TICK_TYPE stamp;	// Todo: Remove meta usages of this
 	char data[1];
 } UPACK_HEAD;
 
-/// Return UPACK size to place 'i' chars into data
-#define UPACK_SIZE(i) (86 + (i))
 
 /**
- * Create UPACK_HEAD using malloc, where data will be data[data_size]
+ * @brief Return UPACK size to place 'i' chars into data
+ * @note Values MUST be checked if UPACK_HEAD is changed
+ */
+#define UPACK_SIZE(i) (4 + 4 + 8 + (i))
+
+
+/**
+ * @brief Create UPACK_HEAD using malloc, where data will be data[data_size]
  *
  * @param data_size
  *
@@ -69,16 +82,12 @@ void* make_UPACK(size_t data_size);
 
 
 
-
-
-
-
 // ========================================================================== //
 // COMMON NETWORK FUNCTIONS
 // ========================================================================== //
 
 /**
- * Delay execution
+ * @brief Delay execution
  *
  * @param time: Time (in seconds) to delay execution for
  */
@@ -86,7 +95,7 @@ void d_all_delay(float time);
 
 
 /**
- * Create an UDP socket and bind it.
+ * @brief Create an UDP socket and bind it.
  *
  * @param type: Type of connection required
  * 				= 0: server
@@ -102,20 +111,20 @@ int d_all_connect(int type);
 
 
 /**
- * Safely close a connection. Can be reopened using d_all_connect
+ * @brief Safely close a connection. Can be reopened using d_all_connect
  */
 void d_all_disconnect();
 
 
 /**
- * Send raw data using UDP protocol
+ * @brief Send raw data using UDP protocol.
  * Wrapper for <socket.h>::sendto()
  *
  * @param data
- * @param data_length: 'sizeof(data)'
+ * @param data_length 'sizeof(data)'
  * @param address
- * @param address_length: 'sizeof(address)'
- * @param repeats: Send UDP packet this number of times
+ * @param address_length 'sizeof(address)'
+ * @param repeats Send UDP packet this number of times
  *
  * @return 0 if successful
  * @return -1 for errors
@@ -126,7 +135,7 @@ int d_all_sendraw(const void *data, size_t data_length,
 
 
 /**
- * Recieve raw data using UDP protocol
+ * @brief Receive raw data using UDP protocol
  * Wrapper for <socket.h>::recvfrom()
  *
  * @param data
@@ -146,16 +155,12 @@ int d_all_recvraw(void* data, size_t data_length,
 
 
 
-
-
-
-
 // ========================================================================== //
 // CLIENT NETWORK FUNCTIONS
 // ========================================================================== //
 
 /**
- * CLIENT: Send "hello" datagram to server
+ * @brief CLIENT: Send "hello" datagram to server
  *
  * @param server: Info of server to be connected to
  * @param reconnect: Is reconnect procedure required
@@ -172,7 +177,7 @@ int d_client_connect(HR_ADDRESS server, int reconnect);
 
 
 /**
- * CLIENT: Send datagram to server
+ * @brief CLIENT: Send datagram to server
  *
  * @param data: Data to send
  * @param data_length
@@ -187,7 +192,7 @@ int d_client_send(const void* data, size_t data_length, size_t repeats);
 
 
 /**
- * CLIENT: Recieve [time-signed] datagram
+ * @brief CLIENT: Recieve [time-signed] datagram
  *
  * @param data: Place for data to be put to
  * @param data_length
@@ -204,16 +209,12 @@ int d_client_get(void* data, size_t data_length, TICK_TYPE tick);
 
 
 
-
-
-
-
 // ========================================================================== //
 // SERVER NETWORK FUNCTIONS
 // ========================================================================== //
 
 /**
- * SERVER: Send a datagram
+ * @brief SERVER: Send a datagram
  *
  * @param data: Data to send
  * @param data_length
@@ -228,7 +229,7 @@ int d_server_send(const void* data, size_t data_length,
 
 
 /**
- * SERVER: Recieve a datagram
+ * @brief SERVER: Recieve a datagram
  *
  * @param mode:
  * 				= 0, accept and save all datagrams
@@ -250,10 +251,6 @@ int d_server_send(const void* data, size_t data_length,
  */
 int d_server_get(int mode, void* data, size_t data_length,
 		HR_ADDRESS* departure);
-
-
-
-
 
 
 

@@ -26,8 +26,7 @@ struct Client_Net_data_t {
 
 
 
-// Compare two HR_ADDRESS. Return 0 if equal, otherwise -1
-int compare_hr(const HR_ADDRESS* a, const HR_ADDRESS* b) {
+int d_compare_hr(const HR_ADDRESS *a, const HR_ADDRESS *b) {
 	if (a ->port != b ->port) {
 		return -1;
 	}
@@ -349,7 +348,7 @@ int d_client_get(void* data, size_t data_length, TICK_TYPE tick) {
 		}
 		
 		transform_to_hr_(&addr_T, &recieved_hr);
-		if (compare_hr(&server_hr, &recieved_hr) != 0) {
+		if (d_compare_hr(&server_hr, &recieved_hr) != 0) {
 			continue;
 		}
 
@@ -391,7 +390,7 @@ int d_server_get(int mode, void* data, size_t data_length,
 	struct sockaddr_in cli_addr;
 	socklen_t cli_addl = sizeof(struct sockaddr_in);
 
-	UPACK_HEAD* recieved = data;
+	UPACK_HEAD* received = data;
 
 	while (1) {
 		last_out_code = d_all_recvraw(data, data_length,
@@ -400,7 +399,7 @@ int d_server_get(int mode, void* data, size_t data_length,
 			return last_out_code;
 		}
 
-		if (recieved ->type == DP_GAME) {
+		if (received ->type == DP_GAME) {
 			// A server cannot get GAME datagrams, it only sends them
 			continue;
 		}
@@ -409,7 +408,7 @@ int d_server_get(int mode, void* data, size_t data_length,
 			break;
 		}
 		else if (mode == 1) {
-			if (recieved ->type == DP_CLIENT_ACTION) {
+			if (received ->type == DP_CLIENT_ACTION) {
 				continue;
 			}
 			else {

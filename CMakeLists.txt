@@ -14,38 +14,29 @@ find_package (Threads REQUIRED)
 
 
 set(SERVER_SOURCE_FILES
-	./all/dconnect.c
-	./all/dconnect_settings.h
-
-	./server/game.c
-	./server/ipToId.c
-	./server/level.c
-	./server/unit.c
-	./server/weapon.c
-	./server/statistics.c
-	./server/main.c
-	)
+		all/gamekey.h
+		all/dconnect_settings.h
+		server/dgame_settings.h
+		server/dserver_settings.h
+		
+		all/dconnect.c
+		server/dgame.c
+		server/dlog.c
+		server/dserver.c
+		)
 add_executable(server ${SERVER_SOURCE_FILES})
-target_link_libraries(server ${CURSES_LIBRARIES})
 target_link_libraries(server pthread)
-
-
-set(TSERVER_SOURCE_FILES
-	./all/dconnect_settings.h
-	./all/dconnect.c
-	
-	./all/net_server.c
-	)
-add_executable(tserver ${TSERVER_SOURCE_FILES})
+target_link_libraries(server m)
 
 
 set(CLIENT_SOURCE_FILES
-	./all/dconnect.c
-	./all/dconnect_settings.h
-
-	./client/dclient.c
-	./client/dclient_settings.h
-	)
+		all/gamekey.h
+		all/dconnect_settings.h
+		client/dclient_settings.h
+		
+		all/dconnect.c
+		client/dclient.c
+		)
 add_executable(client ${CLIENT_SOURCE_FILES})
 target_link_libraries(client ${CURSES_LIBRARIES})
 target_link_libraries(client pthread)

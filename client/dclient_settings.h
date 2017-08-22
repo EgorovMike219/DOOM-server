@@ -4,37 +4,37 @@
 
 
 
-// Game field parameters
-#define CLIENT_FIELD_HEIGHT 10
-#define CLIENT_FIELD_WIDTH 10
-#define CLIENT_FIELD_AREA (CLIENT_FIELD_WIDTH * CLIENT_FIELD_HEIGHT)
-
-// Additional graphics parameters
+/// Displayed border width/height
 #define CLIENT_FIELD_BORDER 1
-#define CLIENT_INFO_SIZE 3
 
+/// Displayed game info height
+#define CLIENT_INFO_SIZE 4
+
+
+/// Defined in main()
 #define DISPLAY_BACKGROUND 1
+
+/// Defined in main()
 #define DISPLAY_ID_BORDER 2
+
+/// Defined in main()
 #define DISPLAY_ID_FIELD 3
+
+/// Defined in main()
 #define DISPLAY_ID_INFO 4
+
+/// Defined in main()
 #define DISPLAY_ID_HEALTH 5
 
-// Various parameters
-#define CLIENT_REDRAW_TICK_MODULE 50
+
+/// A module at which some curses actions should be performed (during the game)
+#define CLIENT_REDRAW_TICK_MODULE 1000
+
+/// A number of wgetch() tries
 #define CLIENT_KEYTRYES 16
-#define CLIENT_ERROR_WAIT 5.000
 
-
-
-
-// TODO: Remove from this file
-#define CMD_W 'w'
-#define CMD_A 'a'
-#define CMD_S 's'
-#define CMD_D 'd'
-#define CMD_BOMB 'b'
-#define CMD_QUIT 'q'
-#define CMD_NONE ' '
+/// Delay (in seconds) before exit at error (and in other cases, e.g. game over)
+#define CLIENT_DELAY 5.000f
 
 
 
